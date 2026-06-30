@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aurora Design System — AI Professional Network (E8-S1)</title>
+<!--
+  E8-S1 — Living style guide / design system.
+  Self-contained, no network deps. Establishes shared CSS variable tokens
+  (light + dark) reused by E8-S2..E8-S5. Working light/dark toggle (OS default,
+  persisted to localStorage). WCAG 2.1 AA.
+-->
+<style>
+/* ============================================================
+   AURORA DESIGN TOKENS  (single source — light + dark)
+   ============================================================ */
+:root{
+  /* Brand / AI aurora ramp (shared across themes) */
+  --brand-1:#5B5BF5; --brand-2:#8B5CF6; --brand-3:#22D3EE;
+  --aurora:linear-gradient(120deg,#5B5BF5 0%,#8B5CF6 45%,#22D3EE 100%);
+  --aurora-soft:linear-gradient(120deg,rgba(91,91,245,.14),rgba(34,211,238,.14));
+
+  /* Typography */
+  --font-display:"Fraunces","Georgia","Times New Roman",serif;
+  --font-body:"Plus Jakarta Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",ui-monospace,monospace;
+
+  /* Spacing (4px base) */
+  --s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;--s-6:24px;
+  --s-8:32px;--s-10:40px;--s-14:56px;--s-20:80px;
+
+  /* Radius */
+  --r-sm:8px;--r-md:14px;--r-lg:20px;--r-xl:28px;--r-full:999px;
+
+  /* Motion */
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --dur:.18s;
+}
+
+/* LIGHT — "Porcelain" */
+[data-theme="light"]{
+  --bg:#F7F8FC; --surface:#FFFFFF; --surface-2:#F1F2F9; --surface-3:#E9EBF6;
+  --text:#15161D; --text-muted:#5A5E72; --text-subtle:#8A8FA3;
+  --border:#E6E8F2; --border-strong:#D2D6E6; --ring:#5B5BF5;
+  --accent:#5B5BF5; --accent-weak:#EEF0FE; --accent-text:#3A3AD0;
+  --success:#16A34A; --success-weak:#E7F6ED;
+  --warning:#B45309; --warning-weak:#FBF1E3;
+  --danger:#DC2626; --danger-weak:#FCEAEA;
+  --shadow-1:0 1px 2px rgba(18,19,31,.06),0 1px 3px rgba(18,19,31,.04);
+  --shadow-2:0 10px 30px -12px rgba(35,30,90,.22);
+  --shadow-glow:0 0 0 1px rgba(91,91,245,.18),0 12px 36px -10px rgba(91,91,245,.34);
+  --skel:linear-gradient(90deg,#ECEEF7 25%,#F6F7FC 37%,#ECEEF7 63%);
+}
+
+/* DARK — "Ink" */
+[data-theme="dark"]{
+  --bg:#0A0B12; --surface:#12131F; --surface-2:#1A1C2B; --surface-3:#22243A;
+  --text:#ECEDF5; --text-muted:#A2A7BE; --text-subtle:#6E7390;
+  --border:#262A3E; --border-strong:#343A55; --ring:#8B5CF6;
+  --accent:#8B5CF6; --accent-weak:#1C1B33; --accent-text:#C4B5FD;
+  --success:#34D399; --success-weak:#10261D;
+  --warning:#FBBF24; --warning-weak:#2A2110;
+  --danger:#F87171; --danger-weak:#2B1414;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 12px 36px -14px rgba(0,0,0,.7);
+  --shadow-glow:0 0 0 1px rgba(139,92,246,.35),0 14px 40px -12px rgba(139,92,246,.4);
+  --skel:linear-gradient(90deg,#1A1C2B 25%,#23263A 37%,#1A1C2B 63%);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--font-body); font-size:16px; line-height:1.6;
+  -webkit-font-smoothing:antialiased; transition:background var(--dur) var(--ease),color var(--dur) var(--ease);
+}
+h1,h2,h3{font-family:var(--font-display); line-height:1.08; letter-spacing:-.02em; margin:0; font-weight:600}
+a{color:var(--accent-text); text-decoration:none}
+:focus-visible{outline:2px solid var(--ring); outline-offset:2px; border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===== Layout helpers ===== */
+.shell{max-width:1180px;margin:0 auto;padding:0 var(--s-6)}
+.eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text);font-weight:600}
+.muted{color:var(--text-muted)}
+.subtle{color:var(--text-subtle)}
+.grad-text{background:var(--aurora);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ===== Top bar ===== */
+.topbar{position:sticky;top:0;z-index:40;backdrop-filter:saturate(140%) blur(10px);
+  background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--border)}
+.topbar-in{display:flex;align-items:center;gap:var(--s-4);height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:-.02em;color:var(--text)}
+.brand .mark{width:30px;height:30px;border-radius:9px;background:var(--aurora);box-shadow:var(--shadow-glow);display:grid;place-items:center;color:#fff;font-family:var(--font-body);font-weight:800;font-size:15px}
+.spacer{flex:1}
+
+/* ===== Theme toggle ===== */
+.toggle{display:inline-flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:var(--r-full);padding:5px;cursor:pointer;color:var(--text)}
+.toggle button{all:unset;display:grid;place-items:center;width:30px;height:30px;border-radius:var(--r-full);cursor:pointer;color:var(--text-muted);font-size:14px}
+.toggle button[aria-pressed="true"]{background:var(--surface);color:var(--accent-text);box-shadow:var(--shadow-1)}
+
+/* ===== Buttons ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font-body);
+  font-weight:600;font-size:14px;border-radius:var(--r-md);padding:11px 18px;border:1px solid transparent;
+  cursor:pointer;transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease),background var(--dur)}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn-primary{background:var(--aurora);color:#fff;box-shadow:var(--shadow-glow)}
+.btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border-strong)}
+.btn-secondary:hover{background:var(--surface-2)}
+.btn-ghost{background:transparent;color:var(--text-muted)}
+.btn-ghost:hover{background:var(--surface-2);color:var(--text)}
+.btn-danger{background:var(--danger-weak);color:var(--danger);border-color:transparent}
+.btn-danger:hover{background:var(--danger);color:#fff}
+.btn-sm{padding:7px 13px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ===== Cards ===== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  box-shadow:var(--shadow-1);padding:var(--s-6);transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+.card-hover:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+.card-glow{position:relative;overflow:hidden}
+.card-glow::before{content:"";position:absolute;inset:0;background:var(--aurora-soft);opacity:.6;pointer-events:none}
+.card-glow>*{position:relative}
+
+/* ===== Inputs ===== */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:var(--s-4)}
+.field label{font-size:13px;font-weight:600;color:var(--text-muted)}
+.input,.textarea,.select{width:100%;font-family:var(--font-body);font-size:15px;color:var(--text);
+  background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r-md);
+  padding:12px 14px;transition:border-color var(--dur),box-shadow var(--dur)}
+.input::placeholder,.textarea::placeholder{color:var(--text-subtle)}
+.input:focus,.textarea:focus,.select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-weak)}
+.textarea{min-height:96px;resize:vertical}
+.input-error{border-color:var(--danger)!important;box-shadow:0 0 0 4px var(--danger-weak)!important}
+.help{font-size:12px;color:var(--text-subtle)}
+.help-error{color:var(--danger);font-weight:600}
+
+/* ===== Badges / chips ===== */
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:var(--r-full);border:1px solid var(--border)}
+.badge-brand{background:var(--accent-weak);color:var(--accent-text);border-color:transparent}
+.badge-success{background:var(--success-weak);color:var(--success);border-color:transparent}
+.badge-warning{background:var(--warning-weak);color:var(--warning);border-color:transparent}
+.badge-danger{background:var(--danger-weak);color:var(--danger);border-color:transparent}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:6px 12px;
+  border-radius:var(--r-full);background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.chip-skill{background:var(--accent-weak);color:var(--accent-text);border-color:transparent}
+.api{font-family:var(--font-mono);font-size:11px;letter-spacing:.02em;color:var(--text-subtle);
+  background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;display:inline-block}
+
+/* ===== Progress ring ===== */
+.ring{--p:0;--sz:96px;width:var(--sz);height:var(--sz);border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--brand-2) calc(var(--p)*1%),var(--surface-2) 0);position:relative}
+.ring::after{content:"";position:absolute;inset:8px;border-radius:50%;background:var(--surface)}
+.ring>span{position:relative;font-family:var(--font-mono);font-weight:700;font-size:20px;color:var(--text)}
+
+/* ===== Skeleton ===== */
+.skel{background:var(--skel);background-size:400% 100%;animation:shimmer 1.3s infinite linear;border-radius:var(--r-sm)}
+@keyframes shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* ===== Toast ===== */
+.toast{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);
+  border-left:4px solid var(--accent);border-radius:var(--r-md);padding:14px 16px;box-shadow:var(--shadow-2);max-width:380px}
+.toast-success{border-left-color:var(--success)}
+.toast-danger{border-left-color:var(--danger)}
+
+/* ===== Modal (style guide demo, inline) ===== */
+.modal-demo{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-2);padding:var(--s-6);max-width:420px}
+
+/* ===== style-guide scaffolding ===== */
+.section{padding:var(--s-10) 0;border-bottom:1px solid var(--border)}
+.section h2{font-size:28px;margin-bottom:6px}
+.grid{display:grid;gap:var(--s-4)}
+.swatch{border-radius:var(--r-md);border:1px solid var(--border);overflow:hidden}
+.swatch .chip-color{height:64px}
+.swatch .meta{padding:10px 12px;font-size:12px}
+.swatch .meta b{display:block;font-size:13px}
+.swatch .meta code{font-family:var(--font-mono);color:var(--text-subtle)}
+.row{display:flex;flex-wrap:wrap;gap:var(--s-3);align-items:center}
+.type-row{display:flex;align-items:baseline;gap:16px;padding:10px 0;border-bottom:1px dashed var(--border)}
+.type-row .lbl{font-family:var(--font-mono);font-size:12px;color:var(--text-subtle);width:130px;flex:none}
+.token-table{width:100%;border-collapse:collapse;font-size:14px}
+.token-table td{padding:9px 12px;border-bottom:1px solid var(--border)}
+.token-table code{font-family:var(--font-mono);color:var(--accent-text)}
+.box-demo{height:60px;background:var(--accent-weak);border:1px solid var(--border);display:grid;place-items:center;font-size:12px;color:var(--text-muted)}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:var(--s-4)}
+.toc a{font-size:13px;padding:6px 12px;border-radius:var(--r-full);background:var(--surface-2);border:1px solid var(--border);color:var(--text)}
+
+@media(max-width:600px){.shell{padding:0 var(--s-4)} .section h2{font-size:24px}}
+</style>
+</head>
+<body>
+<a href="#main" class="btn btn-sm" style="position:absolute;left:-9999px;top:8px" onfocus="this.style.left='8px'" onblur="this.style.left='-9999px'">Skip to content</a>
+
+<header class="topbar">
+  <div class="shell topbar-in">
+    <div class="brand"><span class="mark" aria-hidden="true">A</span> Aurora<span class="grad-text">AI</span></div>
+    <div class="spacer"></div>
+    <span class="api" aria-hidden="true">design-system · E8-S1</span>
+    <div class="toggle" role="group" aria-label="Theme">
+      <button id="t-light" aria-pressed="true" aria-label="Light theme" onclick="setTheme('light')">☀</button>
+      <button id="t-dark" aria-pressed="false" aria-label="Dark theme" onclick="setTheme('dark')">☾</button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="shell">
+  <!-- HERO -->
+  <section class="section" style="border-bottom:none;padding-bottom:var(--s-6)">
+    <p class="eyebrow">Aurora Design Language</p>
+    <h1 style="font-size:48px;max-width:18ch;margin-top:10px">The living style guide for an <span class="grad-text">AI-first</span> career platform.</h1>
+    <p class="muted" style="max-width:62ch;font-size:18px;margin-top:14px">Tokens, typography, and the core component inventory — one source of truth powering light &amp; dark themes across every screen. Toggle the theme in the top-right; your choice persists.</p>
+    <nav class="toc" aria-label="Sections">
+      <a href="#colors">Color tokens</a><a href="#type">Typography</a><a href="#scale">Spacing &amp; radius</a>
+      <a href="#buttons">Buttons</a><a href="#inputs">Inputs</a><a href="#cards">Cards</a>
+      <a href="#badges">Badges &amp; chips</a><a href="#feedback">Modal · Toast · Skeleton</a>
+    </nav>
+  </section>
+
+  <!-- COLORS -->
+  <section class="section" id="colors">
+    <p class="eyebrow">01 — Foundations</p>
+    <h2>Color tokens</h2>
+    <p class="muted">Semantic variables resolve per theme from a single token block. Aurora brand ramp is shared.</p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:var(--s-6)" id="swatches"></div>
+  </section>
+
+  <!-- TYPOGRAPHY -->
+  <section class="section" id="type">
+    <p class="eyebrow">02 — Foundations</p>
+    <h2>Typography scale</h2>
+    <p class="muted">Display serif (Fraunces) for headers, geometric sans (Plus Jakarta) for UI, mono (JetBrains) for data.</p>
+    <div style="margin-top:var(--s-6)">
+      <div class="type-row"><span class="lbl">Display / 60</span><span style="font-family:var(--font-display);font-size:60px;font-weight:700;letter-spacing:-.03em">Aurora</span></div>
+      <div class="type-row"><span class="lbl">Display / 36</span><span style="font-family:var(--font-display);font-size:36px;font-weight:600">Match, optimise, hired</span></div>
+      <div class="type-row"><span class="lbl">Heading / 22</span><span style="font-family:var(--font-display);font-size:22px;font-weight:600">Recent AI analyses</span></div>
+      <div class="type-row"><span class="lbl">Body / 16</span><span style="font-size:16px">Grounded, explainable AI guidance for your career journey.</span></div>
+      <div class="type-row"><span class="lbl">Small / 13</span><span style="font-size:13px" class="muted">Supporting label and helper text.</span></div>
+      <div class="type-row"><span class="lbl">Mono / 12</span><span style="font-family:var(--font-mono);font-size:12px" class="subtle">POST /api/v1/jobs/match</span></div>
+    </div>
+  </section>
+
+  <!-- SPACING / RADIUS / SHADOW -->
+  <section class="section" id="scale">
+    <p class="eyebrow">03 — Foundations</p>
+    <h2>Spacing, radius &amp; elevation</h2>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--s-8);margin-top:var(--s-6)">
+      <div>
+        <h3 style="font-size:18px;margin-bottom:12px">Radius</h3>
+        <div class="row">
+          <div style="text-align:center"><div class="box-demo" style="border-radius:var(--r-sm);width:90px">sm</div><code class="subtle" style="font-family:var(--font-mono);font-size:11px">8px</code></div>
+          <div style="text-align:center"><div class="box-demo" style="border-radius:var(--r-md);width:90px">md</div><code class="subtle" style="font-family:var(--font-mono);font-size:11px">14px</code></div>
+          <div style="text-align:center"><div class="box-demo" style="border-radius:var(--r-lg);width:90px">lg</div><code class="subtle" style="font-family:var(--font-mono);font-size:11px">20px</code></div>
+          <div style="text-align:center"><div class="box-demo" style="border-radius:var(--r-xl);width:90px">xl</div><code class="subtle" style="font-family:var(--font-mono);font-size:11px">28px</code></div>
+        </div>
+        <h3 style="font-size:18px;margin:20px 0 12px">Elevation</h3>
+        <div class="row">
+          <div class="card" style="box-shadow:var(--shadow-1);width:120px;text-align:center;font-size:12px">shadow-1</div>
+          <div class="card" style="box-shadow:var(--shadow-2);width:120px;text-align:center;font-size:12px">shadow-2</div>
+          <div class="card" style="box-shadow:var(--shadow-glow);width:120px;text-align:center;font-size:12px">glow</div>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:18px;margin-bottom:12px">Spacing scale (4px base)</h3>
+        <div id="spacing"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUTTONS -->
+  <section class="section" id="buttons">
+    <p class="eyebrow">04 — Components</p>
+    <h2>Buttons</h2>
+    <div class="row" style="margin-top:var(--s-5)">
+      <button class="btn btn-primary">Primary action</button>
+      <button class="btn btn-secondary">Secondary</button>
+      <button class="btn btn-ghost">Ghost</button>
+      <button class="btn btn-danger">Delete</button>
+      <button class="btn btn-primary btn-sm">Small</button>
+      <button class="btn btn-primary" disabled>Disabled</button>
+    </div>
+    <p class="help" style="margin-top:12px">Primary uses the aurora gradient + glow, reserved for the main action per screen.</p>
+  </section>
+
+  <!-- INPUTS -->
+  <section class="section" id="inputs">
+    <p class="eyebrow">05 — Components</p>
+    <h2>Form controls</h2>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--s-6);max-width:760px;margin-top:var(--s-5)">
+      <div class="field"><label for="d1">Email</label><input id="d1" class="input" type="email" value="asha.rao@example.com" /><span class="help">Default state</span></div>
+      <div class="field"><label for="d2">Password</label><input id="d2" class="input input-error" type="password" value="short" aria-invalid="true" aria-describedby="d2e" /><span id="d2e" class="help help-error">Password must be at least 8 characters.</span></div>
+      <div class="field"><label for="d3">Headline</label><input id="d3" class="input" placeholder="e.g. Aspiring Backend Engineer" /></div>
+      <div class="field"><label for="d4">Seniority</label><select id="d4" class="select"><option>entry</option><option>mid</option><option>senior</option></select></div>
+      <div class="field" style="grid-column:1/-1"><label for="d5">Summary</label><textarea id="d5" class="textarea" placeholder="Tell us about your work…"></textarea></div>
+    </div>
+  </section>
+
+  <!-- CARDS -->
+  <section class="section" id="cards">
+    <p class="eyebrow">06 — Components</p>
+    <h2>Cards &amp; progress</h2>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-top:var(--s-5)">
+      <article class="card card-hover">
+        <span class="badge badge-brand">AI</span>
+        <h3 style="font-size:18px;margin:12px 0 6px">Resume Review</h3>
+        <p class="muted" style="font-size:14px;margin:0">Grounded, explainable critique with citations.</p>
+      </article>
+      <article class="card card-hover card-glow">
+        <span class="badge badge-success">82% fit</span>
+        <h3 style="font-size:18px;margin:12px 0 6px">Aurora glow card</h3>
+        <p class="muted" style="font-size:14px;margin:0">Used on AI-touched surfaces.</p>
+      </article>
+      <article class="card" style="display:flex;align-items:center;gap:18px">
+        <div class="ring" style="--p:80"><span>80%</span></div>
+        <div><h3 style="font-size:16px;margin:0 0 4px">Profile completion</h3><p class="muted" style="font-size:13px;margin:0">Progress ring component</p></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- FEEDBACK -->
+  <section class="section" id="feedback" style="border-bottom:none">
+    <p class="eyebrow">07 — Components</p>
+    <h2>Modal, toast &amp; skeleton</h2>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:var(--s-5)">
+      <div class="modal-demo" role="dialog" aria-label="Confirm deletion demo">
+        <h3 style="font-size:18px">Delete resume?</h3>
+        <p class="muted" style="font-size:14px">This permanently removes your resume and all associated AI analyses. <span class="api">DELETE /api/v1/resume/{resume_id}</span></p>
+        <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn btn-ghost btn-sm">Cancel</button><button class="btn btn-danger btn-sm">Delete</button></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="toast toast-success" role="status"><span aria-hidden="true">✓</span><div><b style="font-size:14px">Profile saved</b><div class="muted" style="font-size:13px">Completion now 80%.</div></div></div>
+        <div class="toast toast-danger" role="alert"><span aria-hidden="true">!</span><div><b style="font-size:14px">Rate limit reached</b><div class="muted" style="font-size:13px">Try again in 42 minutes.</div></div></div>
+      </div>
+      <div class="card">
+        <div class="skel" style="height:14px;width:60%;margin-bottom:10px"></div>
+        <div class="skel" style="height:12px;width:100%;margin-bottom:8px"></div>
+        <div class="skel" style="height:12px;width:90%;margin-bottom:8px"></div>
+        <div class="skel" style="height:12px;width:75%"></div>
+        <p class="help" style="margin-top:12px">Skeleton loader (AI in-progress)</p>
+      </div>
+    </div>
+  </section>
+
+  <footer style="padding:var(--s-10) 0;color:var(--text-subtle);font-size:13px">
+    Aurora Design System · E8-S1 · Tokens consumed by E8-S2 … E8-S5 · WCAG 2.1 AA
+  </footer>
+</main>
+
+<script>
+/* ---- Theme: OS default + persisted manual toggle ---- */
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  try{localStorage.setItem('aurora-theme',t)}catch(e){}
+  document.getElementById('t-light').setAttribute('aria-pressed',String(t==='light'));
+  document.getElementById('t-dark').setAttribute('aria-pressed',String(t==='dark'));
+}
+(function(){
+  let saved=null; try{saved=localStorage.getItem('aurora-theme')}catch(e){}
+  const os=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+  setTheme(saved||os);
+})();
+
+/* ---- Render color swatches & spacing dynamically from tokens ---- */
+const swatchTokens=[
+  ['--bg','Background'],['--surface','Surface'],['--surface-2','Surface 2'],
+  ['--text','Text'],['--text-muted','Text muted'],['--border','Border'],
+  ['--accent','Accent'],['--accent-weak','Accent weak'],
+  ['--success','Success'],['--warning','Warning'],['--danger','Danger']
+];
+function renderSwatches(){
+  const wrap=document.getElementById('swatches'); wrap.innerHTML='';
+  const cs=getComputedStyle(document.documentElement);
+  // Aurora gradient swatch first
+  wrap.insertAdjacentHTML('beforeend',
+    `<div class="swatch"><div class="chip-color" style="background:var(--aurora)"></div><div class="meta"><b>Aurora gradient</b><code>--aurora</code></div></div>`);
+  swatchTokens.forEach(([v,name])=>{
+    const val=cs.getPropertyValue(v).trim();
+    wrap.insertAdjacentHTML('beforeend',
+      `<div class="swatch"><div class="chip-color" style="background:var(${v});box-shadow:inset 0 0 0 1px var(--border)"></div><div class="meta"><b>${name}</b><code>${v}: ${val}</code></div></div>`);
+  });
+}
+renderSwatches();
+new MutationObserver(renderSwatches).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+const spaces=[['s-1','4'],['s-2','8'],['s-3','12'],['s-4','16'],['s-6','24'],['s-8','32'],['s-10','40'],['s-14','56']];
+document.getElementById('spacing').innerHTML=spaces.map(([k,px])=>
+  `<div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+     <code style="font-family:var(--font-mono);font-size:12px;color:var(--text-subtle);width:46px">${px}px</code>
+     <div style="height:14px;width:var(--${k});background:var(--aurora);border-radius:4px"></div>
+   </div>`).join('');
+</script>
+</body>
+</html>

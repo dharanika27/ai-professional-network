@@ -1,0 +1,118 @@
+"""Types package — Layer 1 (foundation).
+
+No imports from any other app layer.
+"""
+
+from app.types.ai import ProfileOptimizationContent, ResumeReviewContent
+from app.types.domain import (
+    AIRequestLog,
+    Job,
+    JobMatch,
+    JobMatchRun,
+    KnowledgeChunk,
+    Profile,
+    ProfileOptimization,
+    RefreshToken,
+    Resume,
+    ResumeReview,
+    User,
+)
+from app.types.dto import (
+    AIRequestLogResponse,
+    AuthSessionResponse,
+    ErrorDetail,
+    ErrorResponse,
+    JobMatchResponse,
+    JobMatchRunResponse,
+    JobResponse,
+    KnowledgeChunkResponse,
+    LoginRequest,
+    ProfileOptimizationResponse,
+    ProfileResponse,
+    ProfileUpdateRequest,
+    RegisterRequest,
+    ResumeResponse,
+    ResumeReviewResponse,
+    UserResponse,
+)
+from app.types.enums import (
+    ALLOWED_MIME_TYPES,
+    MIME_DOCX,
+    MIME_PDF,
+    AIFeature,
+    AIOutcome,
+    JobMatchRunStatus,
+    JobSource,
+    KnowledgeCategory,
+    MimeType,
+    ParseStatus,
+    ReviewStatus,
+    ThemePreference,
+)
+from app.types.structured import (
+    CertificationItem,
+    Citation,
+    ContactInfo,
+    EducationItem,
+    ExperienceItem,
+    ProjectItem,
+    ReviewItem,
+    StructuredResume,
+)
+
+__all__ = [
+    # domain
+    "AIRequestLog",
+    "Job",
+    "JobMatch",
+    "JobMatchRun",
+    "KnowledgeChunk",
+    "Profile",
+    "ProfileOptimization",
+    "RefreshToken",
+    "Resume",
+    "ResumeReview",
+    "User",
+    # dto
+    "AIRequestLogResponse",
+    "AuthSessionResponse",
+    "ErrorDetail",
+    "ErrorResponse",
+    "JobMatchResponse",
+    "JobMatchRunResponse",
+    "JobResponse",
+    "KnowledgeChunkResponse",
+    "LoginRequest",
+    "ProfileOptimizationResponse",
+    "ProfileResponse",
+    "ProfileUpdateRequest",
+    "RegisterRequest",
+    "ResumeResponse",
+    "ResumeReviewResponse",
+    "UserResponse",
+    # enums
+    "AIFeature",
+    "AIOutcome",
+    "ALLOWED_MIME_TYPES",
+    "JobMatchRunStatus",
+    "JobSource",
+    "KnowledgeCategory",
+    "MIME_DOCX",
+    "MIME_PDF",
+    "MimeType",
+    "ParseStatus",
+    "ReviewStatus",
+    "ThemePreference",
+    # structured
+    "CertificationItem",
+    "Citation",
+    "ContactInfo",
+    "EducationItem",
+    "ExperienceItem",
+    "ProjectItem",
+    "ReviewItem",
+    "StructuredResume",
+    # ai content
+    "ProfileOptimizationContent",
+    "ResumeReviewContent",
+]

@@ -1,0 +1,355 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-professional-network/specs/design/data-models.schema.json",
+  "title": "AI Professional Network — Data Models (MVP)",
+  "description": "Canonical JSON Schema for all persistence entities and embedded sub-documents. snake_case throughout. Embeddings are vector(384) (bge-small-en-v1.5).",
+  "type": "object",
+  "definitions": {
+    "uuid": { "type": "string", "format": "uuid" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "embedding384": {
+      "type": "array",
+      "description": "bge-small-en-v1.5 embedding; exactly 384 float dimensions.",
+      "items": { "type": "number" },
+      "minItems": 384,
+      "maxItems": 384
+    },
+    "themePreference": { "type": "string", "enum": ["system", "light", "dark"] },
+    "mimeType": {
+      "type": "string",
+      "enum": [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ]
+    },
+
+    "User": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "email", "password_hash", "theme_preference", "created_at", "updated_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "email": { "type": "string", "format": "email", "description": "PII; stored lower-cased; unique." },
+        "password_hash": { "type": "string", "description": "Argon2id; never exposed in DTOs or logs." },
+        "theme_preference": { "$ref": "#/definitions/themePreference" },
+        "created_at": { "$ref": "#/definitions/timestamp" },
+        "updated_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+
+    "RefreshToken": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "user_id", "token_hash", "expires_at", "revoked", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "user_id": { "$ref": "#/definitions/uuid" },
+        "token_hash": { "type": "string", "description": "SHA-256 hex of opaque refresh token; unique." },
+        "expires_at": { "$ref": "#/definitions/timestamp" },
+        "revoked": { "type": "boolean", "default": false },
+        "rotated_to": { "oneOf": [{ "$ref": "#/definitions/uuid" }, { "type": "null" }] },
+        "created_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+
+    "ContactInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PII.",
+      "required": ["links"],
+      "properties": {
+        "full_name": { "type": ["string", "null"] },
+        "email": { "type": ["string", "null"], "format": "email" },
+        "phone": { "type": ["string", "null"] },
+        "location": { "type": ["string", "null"] },
+        "links": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+
+    "EducationItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["institution"],
+      "properties": {
+        "institution": { "type": "string" },
+        "degree": { "type": ["string", "null"] },
+        "field": { "type": ["string", "null"] },
+        "start_year": { "type": ["integer", "null"] },
+        "end_year": { "type": ["integer", "null"] },
+        "grade": { "type": ["string", "null"] }
+      }
+    },
+
+    "ExperienceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company", "title", "current"],
+      "properties": {
+        "company": { "type": "string" },
+        "title": { "type": "string" },
+        "start_date": { "type": ["string", "null"], "description": "YYYY-MM" },
+        "end_date": { "type": ["string", "null"], "description": "YYYY-MM or null if current" },
+        "current": { "type": "boolean", "default": false },
+        "description": { "type": ["string", "null"] }
+      }
+    },
+
+    "CertificationItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "issuer": { "type": ["string", "null"] },
+        "issued_date": { "type": ["string", "null"], "description": "YYYY-MM" }
+      }
+    },
+
+    "ProjectItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "technologies"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "url": { "type": ["string", "null"], "format": "uri" },
+        "technologies": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+
+    "StructuredResume": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Matches BRD structured-resume schema exactly. PII (contains contact).",
+      "required": ["contact", "skills", "education", "experience", "certifications", "projects"],
+      "properties": {
+        "contact": { "$ref": "#/definitions/ContactInfo" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "education": { "type": "array", "items": { "$ref": "#/definitions/EducationItem" } },
+        "experience": { "type": "array", "items": { "$ref": "#/definitions/ExperienceItem" } },
+        "certifications": { "type": "array", "items": { "$ref": "#/definitions/CertificationItem" } },
+        "projects": { "type": "array", "items": { "$ref": "#/definitions/ProjectItem" } }
+      }
+    },
+
+    "Profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "user_id", "skills", "education", "experience", "certifications", "projects", "completion_percentage", "created_at", "updated_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "user_id": { "$ref": "#/definitions/uuid" },
+        "full_name": { "type": ["string", "null"], "maxLength": 120, "description": "PII." },
+        "headline": { "type": ["string", "null"], "maxLength": 160 },
+        "summary": { "type": ["string", "null"], "maxLength": 2000 },
+        "skills": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "education": { "type": "array", "items": { "$ref": "#/definitions/EducationItem" }, "default": [] },
+        "experience": { "type": "array", "items": { "$ref": "#/definitions/ExperienceItem" }, "default": [] },
+        "certifications": { "type": "array", "items": { "$ref": "#/definitions/CertificationItem" }, "default": [] },
+        "projects": { "type": "array", "items": { "$ref": "#/definitions/ProjectItem" }, "default": [] },
+        "completion_percentage": { "type": "integer", "minimum": 0, "maximum": 100, "default": 0 },
+        "created_at": { "$ref": "#/definitions/timestamp" },
+        "updated_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+
+    "Resume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "user_id", "original_filename", "mime_type", "size_bytes", "file_hash", "storage_key", "parse_status", "created_at", "updated_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "user_id": { "$ref": "#/definitions/uuid" },
+        "original_filename": { "type": "string", "maxLength": 255, "description": "PII." },
+        "mime_type": { "$ref": "#/definitions/mimeType" },
+        "size_bytes": { "type": "integer", "minimum": 1, "maximum": 5242880 },
+        "file_hash": { "type": "string", "description": "SHA-256 hex; unique per (user_id, file_hash)." },
+        "storage_key": { "type": "string", "description": "Opaque, non-web-served storage key. Never exposed in DTOs." },
+        "parse_status": { "type": "string", "enum": ["pending", "parsed", "failed"], "default": "pending" },
+        "structured_content": { "oneOf": [{ "$ref": "#/definitions/StructuredResume" }, { "type": "null" }], "description": "PII." },
+        "embedding": { "oneOf": [{ "$ref": "#/definitions/embedding384" }, { "type": "null" }] },
+        "parse_error": { "type": ["string", "null"] },
+        "created_at": { "$ref": "#/definitions/timestamp" },
+        "updated_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+
+    "Citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_file"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "source_file": { "type": "string" },
+        "snippet": { "type": ["string", "null"] }
+      }
+    },
+
+    "ReviewItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" },
+        "source_id": { "type": ["string", "null"] }
+      }
+    },
+
+    "ResumeReviewContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overall_summary", "strengths", "weaknesses", "ats_issues", "suggestions"],
+      "properties": {
+        "overall_summary": { "type": "string" },
+        "strengths": { "type": "array", "items": { "$ref": "#/definitions/ReviewItem" } },
+        "weaknesses": { "type": "array", "items": { "$ref": "#/definitions/ReviewItem" } },
+        "ats_issues": { "type": "array", "items": { "$ref": "#/definitions/ReviewItem" } },
+        "suggestions": { "type": "array", "items": { "$ref": "#/definitions/ReviewItem" } }
+      }
+    },
+
+    "ResumeReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "resume_id", "user_id", "resume_file_hash", "status", "sources", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "resume_id": { "$ref": "#/definitions/uuid" },
+        "user_id": { "$ref": "#/definitions/uuid" },
+        "resume_file_hash": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"], "default": "pending" },
+        "content": { "oneOf": [{ "$ref": "#/definitions/ResumeReviewContent" }, { "type": "null" }] },
+        "sources": { "type": "array", "items": { "$ref": "#/definitions/Citation" }, "default": [] },
+        "model_id": { "type": ["string", "null"] },
+        "created_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+
+    "ProfileOptimizationContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headline_suggestions", "missing_skills", "section_suggestions"],
+      "properties": {
+        "headline_suggestions": { "type": "array", "items": { "$ref": "#/definitions/ReviewItem" } },
+        "summary_suggestion": { "oneOf": [{ "$ref": "#/definitions/ReviewItem" }, { "type": "null" }] },
+        "missing_skills": { "type": "array", "items": { "type": "string" } },
+        "section_suggestions": { "type": "array", "items": { "$ref": "#/definitions/ReviewItem" } }
+      }
+    },
+
+    "ProfileOptimization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "user_id", "status", "sources", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "user_id": { "$ref": "#/definitions/uuid" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"], "default": "pending" },
+        "content": { "oneOf": [{ "$ref": "#/definitions/ProfileOptimizationContent" }, { "type": "null" }] },
+        "sources": { "type": "array", "items": { "$ref": "#/definitions/Citation" }, "default": [] },
+        "model_id": { "type": ["string", "null"] },
+        "created_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+
+    "Job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "company", "location", "description", "skills", "embedding", "source", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "external_ref": { "type": ["string", "null"] },
+        "title": { "type": "string", "maxLength": 200 },
+        "company": { "type": "string", "maxLength": 200 },
+        "location": { "type": "string" },
+        "employment_type": { "type": ["string", "null"] },
+        "description": { "type": "string" },
+        "skills": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "seniority": { "type": ["string", "null"] },
+        "embedding": { "$ref": "#/definitions/embedding384" },
+        "source": { "type": "string", "enum": ["seed", "api"], "default": "seed" },
+        "created_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+
+    "JobMatchRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "user_id", "resume_id", "status", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "user_id": { "$ref": "#/definitions/uuid" },
+        "resume_id": { "$ref": "#/definitions/uuid" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"], "default": "pending" },
+        "model_id": { "type": ["string", "null"] },
+        "created_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+
+    "JobMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "run_id", "job_id", "fit_score", "fit_explanation", "gaps", "rank", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "run_id": { "$ref": "#/definitions/uuid" },
+        "job_id": { "$ref": "#/definitions/uuid" },
+        "fit_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "fit_explanation": { "type": "string" },
+        "gaps": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "rank": { "type": "integer", "minimum": 1 },
+        "created_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+
+    "KnowledgeChunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source_file", "category", "chunk_index", "content", "content_hash", "embedding", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "source_file": { "type": "string" },
+        "category": { "type": "string", "enum": ["ats", "resume", "profile", "interview", "career"] },
+        "chunk_index": { "type": "integer", "minimum": 0 },
+        "content": { "type": "string" },
+        "content_hash": { "type": "string", "description": "SHA-256 of content; unique for idempotent ingestion." },
+        "embedding": { "$ref": "#/definitions/embedding384" },
+        "created_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+
+    "AIRequestLog": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Metadata only. MUST NOT contain PII, prompt content, or resume text.",
+      "required": ["id", "request_id", "feature", "model_id", "outcome", "retry_count", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "request_id": { "$ref": "#/definitions/uuid" },
+        "user_id": { "oneOf": [{ "$ref": "#/definitions/uuid" }, { "type": "null" }] },
+        "feature": { "type": "string", "enum": ["resume_structuring", "resume_review", "profile_optimization", "job_matching"] },
+        "model_id": { "type": "string" },
+        "outcome": { "type": "string", "enum": ["success", "retry_success", "failed", "timeout", "invalid_schema", "rate_limited"] },
+        "latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "input_tokens": { "type": ["integer", "null"], "minimum": 0 },
+        "output_tokens": { "type": ["integer", "null"], "minimum": 0 },
+        "retry_count": { "type": "integer", "minimum": 0, "default": 0 },
+        "created_at": { "$ref": "#/definitions/timestamp" }
+      }
+    }
+  },
+
+  "properties": {
+    "User": { "$ref": "#/definitions/User" },
+    "RefreshToken": { "$ref": "#/definitions/RefreshToken" },
+    "Profile": { "$ref": "#/definitions/Profile" },
+    "Resume": { "$ref": "#/definitions/Resume" },
+    "ResumeReview": { "$ref": "#/definitions/ResumeReview" },
+    "ProfileOptimization": { "$ref": "#/definitions/ProfileOptimization" },
+    "Job": { "$ref": "#/definitions/Job" },
+    "JobMatchRun": { "$ref": "#/definitions/JobMatchRun" },
+    "JobMatch": { "$ref": "#/definitions/JobMatch" },
+    "KnowledgeChunk": { "$ref": "#/definitions/KnowledgeChunk" },
+    "AIRequestLog": { "$ref": "#/definitions/AIRequestLog" }
+  }
+}

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Profile · Edit · Resume Upload — AuroraAI (E8-S3)</title>
+<!--
+  E8-S3 — Profile View, Profile Edit, Resume Upload (tabs). App shell w/ sidebar.
+  Reuses E8-S1 Aurora tokens. Mock data snake_case per GET/PUT /api/v1/profile,
+  POST /api/v1/resume. Includes: completion %, LLM disclosure, client-side file
+  validation, parse loading state, and the structured resume display after upload.
+-->
+<style>
+:root{--brand-1:#5B5BF5;--brand-2:#8B5CF6;--brand-3:#22D3EE;--aurora:linear-gradient(120deg,#5B5BF5 0%,#8B5CF6 45%,#22D3EE 100%);--aurora-soft:linear-gradient(120deg,rgba(91,91,245,.14),rgba(34,211,238,.14));--font-display:"Fraunces","Georgia",serif;--font-body:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,monospace;--r-sm:8px;--r-md:14px;--r-lg:20px;--r-xl:28px;--r-full:999px;--ease:cubic-bezier(.22,.61,.36,1);--dur:.18s;}
+[data-theme="light"]{--bg:#F7F8FC;--surface:#FFFFFF;--surface-2:#F1F2F9;--surface-3:#E9EBF6;--text:#15161D;--text-muted:#5A5E72;--text-subtle:#8A8FA3;--border:#E6E8F2;--border-strong:#D2D6E6;--ring:#5B5BF5;--accent:#5B5BF5;--accent-weak:#EEF0FE;--accent-text:#3A3AD0;--success:#16A34A;--success-weak:#E7F6ED;--warning:#B45309;--warning-weak:#FBF1E3;--danger:#DC2626;--danger-weak:#FCEAEA;--shadow-1:0 1px 2px rgba(18,19,31,.06),0 1px 3px rgba(18,19,31,.04);--shadow-2:0 10px 30px -12px rgba(35,30,90,.22);--shadow-glow:0 0 0 1px rgba(91,91,245,.18),0 12px 36px -10px rgba(91,91,245,.34);--skel:linear-gradient(90deg,#ECEEF7 25%,#F6F7FC 37%,#ECEEF7 63%);}
+[data-theme="dark"]{--bg:#0A0B12;--surface:#12131F;--surface-2:#1A1C2B;--surface-3:#22243A;--text:#ECEDF5;--text-muted:#A2A7BE;--text-subtle:#6E7390;--border:#262A3E;--border-strong:#343A55;--ring:#8B5CF6;--accent:#8B5CF6;--accent-weak:#1C1B33;--accent-text:#C4B5FD;--success:#34D399;--success-weak:#10261D;--warning:#FBBF24;--warning-weak:#2A2110;--danger:#F87171;--danger-weak:#2B1414;--shadow-1:0 1px 2px rgba(0,0,0,.4);--shadow-2:0 12px 36px -14px rgba(0,0,0,.7);--shadow-glow:0 0 0 1px rgba(139,92,246,.35),0 14px 40px -12px rgba(139,92,246,.4);--skel:linear-gradient(90deg,#1A1C2B 25%,#23263A 37%,#1A1C2B 63%);}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;transition:background var(--dur),color var(--dur)}
+h1,h2,h3{font-family:var(--font-display);line-height:1.1;letter-spacing:-.02em;margin:0;font-weight:600}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:6px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.grad-text{background:var(--aurora);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text);font-weight:600}
+.muted{color:var(--text-muted)} .subtle{color:var(--text-subtle)}
+.api{font-family:var(--font-mono);font-size:11px;color:var(--text-subtle);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;display:inline-block}
+
+/* ===== App shell ===== */
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--text);padding:6px 8px 18px}
+.brand .mark{width:28px;height:28px;border-radius:8px;background:var(--aurora);box-shadow:var(--shadow-glow);display:grid;place-items:center;color:#fff;font-family:var(--font-body);font-weight:800;font-size:14px}
+.navlink{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-md);color:var(--text-muted);font-size:14px;font-weight:600;cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+.navlink:hover{background:var(--surface-2);color:var(--text)}
+.navlink[aria-current="page"]{background:var(--accent-weak);color:var(--accent-text)}
+.navlink .ic{width:18px;display:inline-grid;place-items:center}
+.sb-foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 8px;border-top:1px solid var(--border)}
+.avatar{width:34px;height:34px;border-radius:var(--r-full);background:var(--aurora);display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px}
+.main{padding:0}
+.topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;height:64px;padding:0 28px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(10px)}
+.spacer{flex:1}
+.tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-full);padding:4px}
+.tabs button{all:unset;font-size:13px;font-weight:600;padding:7px 14px;border-radius:var(--r-full);cursor:pointer;color:var(--text-muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--accent-text);box-shadow:var(--shadow-1)}
+.toggle{display:inline-flex;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-full);padding:5px}
+.toggle button{all:unset;display:grid;place-items:center;width:30px;height:30px;border-radius:var(--r-full);cursor:pointer;color:var(--text-muted)}
+.toggle button[aria-pressed="true"]{background:var(--surface);color:var(--accent-text);box-shadow:var(--shadow-1)}
+.content{max-width:1000px;margin:0 auto;padding:32px 28px 80px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px;border-radius:var(--r-md);padding:11px 18px;border:1px solid transparent;cursor:pointer;font-family:inherit;transition:transform var(--dur),box-shadow var(--dur)}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--aurora);color:#fff;box-shadow:var(--shadow-glow)}
+.btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border-strong)}
+.btn-ghost{background:transparent;color:var(--text-muted)}
+.btn-sm{padding:7px 13px;font-size:13px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-1);padding:24px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.field label{font-size:13px;font-weight:600;color:var(--text-muted)}
+.input,.textarea{width:100%;font-family:inherit;font-size:15px;color:var(--text);background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r-md);padding:11px 13px}
+.input:focus,.textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-weak)}
+.textarea{min-height:90px;resize:vertical}
+.help{font-size:12px;color:var(--text-subtle)}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:var(--r-full)}
+.badge-brand{background:var(--accent-weak);color:var(--accent-text)} .badge-success{background:var(--success-weak);color:var(--success)} .badge-warning{background:var(--warning-weak);color:var(--warning)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:6px 12px;border-radius:var(--r-full);background:var(--accent-weak);color:var(--accent-text)}
+.ring{--p:0;--sz:120px;width:var(--sz);height:var(--sz);border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--brand-2) calc(var(--p)*1%),var(--surface-2) 0);position:relative;flex:none}
+.ring::after{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--surface)}
+.ring>div{position:relative;text-align:center}
+.ring b{font-family:var(--font-mono);font-weight:700;font-size:26px}
+.page{display:none}.page.active{display:block}
+.profile-head{display:flex;gap:20px;align-items:flex-start}
+.pf-avatar{width:84px;height:84px;border-radius:var(--r-lg);background:var(--aurora);display:grid;place-items:center;color:#fff;font-family:var(--font-display);font-weight:700;font-size:32px;flex:none;box-shadow:var(--shadow-glow)}
+.sec{margin-top:20px}
+.sec h3{font-size:18px;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.item{padding:14px 0;border-bottom:1px solid var(--border)}
+.item:last-child{border-bottom:none}
+.dropzone{border:2px dashed var(--border-strong);border-radius:var(--r-lg);padding:40px;text-align:center;background:var(--surface-2);cursor:pointer;transition:border-color var(--dur),background var(--dur)}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);background:var(--accent-weak)}
+.disclosure{display:flex;gap:10px;background:var(--accent-weak);border:1px solid transparent;border-radius:var(--r-md);padding:13px 15px;font-size:13px;color:var(--accent-text);margin-bottom:18px}
+.alert{display:flex;gap:10px;border-radius:var(--r-md);padding:12px 14px;font-size:14px}
+.alert-danger{background:var(--danger-weak);color:var(--danger)}
+.skel{background:var(--skel);background-size:400% 100%;animation:sh 1.3s infinite linear;border-radius:var(--r-sm)}
+@keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:rot .7s linear infinite;display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+.mobnav{display:none}
+@media(max-width:860px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .mobnav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--surface);border-top:1px solid var(--border);padding:8px;justify-content:space-around}
+  .mobnav .navlink{flex-direction:column;gap:2px;font-size:11px;padding:6px}
+  .content{padding-bottom:90px}
+  .tabs button{padding:6px 9px}
+}
+@media(max-width:560px){.grid2{grid-template-columns:1fr}.profile-head{flex-direction:column}.content{padding:20px 16px 90px}.topbar{padding:0 16px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" aria-label="Primary">
+    <div class="brand"><span class="mark" aria-hidden="true">A</span>Aurora<span class="grad-text">AI</span></div>
+    <button class="navlink"><span class="ic" aria-hidden="true">◧</span>Dashboard</button>
+    <button class="navlink" aria-current="page"><span class="ic" aria-hidden="true">◑</span>Profile</button>
+    <button class="navlink"><span class="ic" aria-hidden="true">✦</span>AI Review</button>
+    <button class="navlink"><span class="ic" aria-hidden="true">≋</span>Job Matches</button>
+    <button class="navlink"><span class="ic" aria-hidden="true">⚙</span>Settings</button>
+    <div class="sb-foot"><span class="avatar" aria-hidden="true">AR</span><div style="font-size:13px;line-height:1.3"><b>Asha Rao</b><div class="subtle" style="font-size:12px">asha.rao@example.com</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <strong style="font-family:var(--font-display);font-size:17px">Profile</strong>
+      <div class="spacer"></div>
+      <div class="tabs" role="tablist" aria-label="Profile screens">
+        <button role="tab" aria-selected="true" onclick="show('view',this)">View</button>
+        <button role="tab" aria-selected="false" onclick="show('edit',this)">Edit</button>
+        <button role="tab" aria-selected="false" onclick="show('upload',this)">Resume Upload</button>
+      </div>
+      <div class="toggle" role="group" aria-label="Theme">
+        <button id="t-light" aria-pressed="true" aria-label="Light" onclick="setTheme('light')">☀</button>
+        <button id="t-dark" aria-pressed="false" aria-label="Dark" onclick="setTheme('dark')">☾</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- ============ PROFILE VIEW ============ -->
+      <section class="page active" id="view" aria-label="Profile view">
+        <p class="api" style="margin-bottom:14px">GET /api/v1/profile</p>
+        <div class="card">
+          <div class="profile-head">
+            <div class="pf-avatar" aria-hidden="true">AR</div>
+            <div style="flex:1">
+              <h1 style="font-size:30px">Asha Rao</h1>
+              <p style="font-size:16px;margin:4px 0 0" class="muted">Final-year CS student | Aspiring Backend Engineer</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                <button class="btn btn-secondary btn-sm" onclick="show('edit',document.querySelectorAll('[role=tab]')[1])">Edit profile</button>
+                <button class="btn btn-ghost btn-sm" onclick="show('upload',document.querySelectorAll('[role=tab]')[2])">Manage resume</button>
+              </div>
+            </div>
+            <div class="ring" style="--p:80" role="img" aria-label="Profile completion 80 percent"><div><b>80%</b><div class="subtle" style="font-size:11px">complete</div></div></div>
+          </div>
+
+          <div class="sec">
+            <h3>Summary</h3>
+            <p class="muted" style="margin:0">Final-year Computer Science student building production-grade Python services, with hands-on FastAPI and PostgreSQL experience from internship and personal projects. Focused on backend engineering and applied AI.</p>
+          </div>
+
+          <div class="sec">
+            <h3>Skills</h3>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <span class="chip">Python</span><span class="chip">FastAPI</span><span class="chip">PostgreSQL</span><span class="chip">Docker</span><span class="chip">pgvector</span>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Experience</h3>
+            <div class="item">
+              <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><b>Backend Intern · Acme Labs</b><span class="subtle" style="font-size:13px">2025-05 → 2025-08</span></div>
+              <p class="muted" style="font-size:14px;margin:4px 0 0">Built REST APIs in FastAPI; added pagination and caching that cut p95 latency by 40%.</p>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Education</h3>
+            <div class="item">
+              <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><b>B.E. Computer Science · PSG Tech</b><span class="subtle" style="font-size:13px">2022 → 2026</span></div>
+              <p class="muted" style="font-size:14px;margin:4px 0 0">CS · 8.7 CGPA</p>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Projects</h3>
+            <div class="item">
+              <b>ResumeRAG</b>
+              <p class="muted" style="font-size:14px;margin:4px 0 6px">RAG-grounded resume reviewer.</p>
+              <div style="display:flex;flex-wrap:wrap;gap:6px"><span class="chip" style="font-size:12px">Python</span><span class="chip" style="font-size:12px">pgvector</span></div>
+            </div>
+          </div>
+
+          <div class="sec" style="border-top:1px solid var(--border);padding-top:18px">
+            <h3 style="font-size:15px;color:var(--warning)"><span class="badge badge-warning">Recommended</span></h3>
+            <p class="muted" style="font-size:14px;margin:6px 0 0">Add <b>certifications</b> to reach 100% completion. <span class="subtle">(incomplete_sections: ["certifications"])</span></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PROFILE EDIT ============ -->
+      <section class="page" id="edit" aria-label="Profile edit">
+        <p class="api" style="margin-bottom:14px">PUT /api/v1/profile</p>
+        <form class="card" onsubmit="return saveProfile(event)">
+          <h2 style="font-size:24px;margin-bottom:4px">Edit profile</h2>
+          <p class="muted" style="font-size:14px;margin:0 0 20px">Changes save without a full reload; completion recomputes on success.</p>
+          <div class="grid2">
+            <div class="field"><label for="e-name">Full name</label><input id="e-name" class="input" value="Asha Rao" maxlength="120" /></div>
+            <div class="field"><label for="e-headline">Headline</label><input id="e-headline" class="input" maxlength="160" value="Final-year CS student | Aspiring Backend Engineer" /></div>
+          </div>
+          <div class="field"><label for="e-summary">Summary</label><textarea id="e-summary" class="textarea" maxlength="2000">Final-year Computer Science student building production-grade Python services, with hands-on FastAPI and PostgreSQL experience.</textarea></div>
+          <div class="field"><label for="e-skills">Skills (comma-separated)</label><input id="e-skills" class="input" value="Python, FastAPI, PostgreSQL, Docker, pgvector" /><span class="help">Trimmed &amp; deduped server-side, case preserved.</span></div>
+
+          <h3 style="font-size:16px;margin:18px 0 8px">Add certification <span class="badge badge-warning" style="font-size:11px">boosts completion</span></h3>
+          <div class="grid2">
+            <div class="field"><label for="c-name">Name</label><input id="c-name" class="input" placeholder="AWS Cloud Practitioner" /></div>
+            <div class="field"><label for="c-issuer">Issuer</label><input id="c-issuer" class="input" placeholder="AWS" /></div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:8px">
+            <button class="btn btn-primary" type="submit" id="save-btn">Save changes</button>
+            <button class="btn btn-ghost" type="button" onclick="show('view',document.querySelectorAll('[role=tab]')[0])">Cancel</button>
+            <span class="spacer"></span>
+            <span id="save-status" role="status" aria-live="polite" class="muted" style="font-size:13px;align-self:center"></span>
+          </div>
+        </form>
+      </section>
+
+      <!-- ============ RESUME UPLOAD ============ -->
+      <section class="page" id="upload" aria-label="Resume upload">
+        <p class="api" style="margin-bottom:14px">POST /api/v1/resume · multipart/form-data</p>
+
+        <div class="disclosure" role="note">
+          <span aria-hidden="true">🛈</span>
+          <span>Your resume content is processed by an external LLM provider (Anthropic Claude) to extract and structure it. Files are PDF/DOCX, up to 5&nbsp;MB.</span>
+        </div>
+
+        <!-- Upload state -->
+        <div id="up-idle">
+          <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Upload resume, PDF or DOCX up to 5 megabytes">
+            <div style="font-size:34px" aria-hidden="true">⬆</div>
+            <p style="font-weight:600;margin:8px 0 2px">Drop your resume here, or click to browse</p>
+            <p class="subtle" style="font-size:13px;margin:0">PDF or DOCX · max 5 MB</p>
+            <input id="file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+          </div>
+          <div id="up-error" class="alert alert-danger" role="alert" style="display:none;margin-top:14px"></div>
+          <p class="help" style="margin-top:10px">Demo controls:
+            <button class="btn btn-ghost btn-sm" onclick="simulate('ok')">Simulate valid upload</button>
+            <button class="btn btn-ghost btn-sm" onclick="simulate('big')">Simulate 6&nbsp;MB (too large)</button>
+            <button class="btn btn-ghost btn-sm" onclick="simulate('type')">Simulate .txt (wrong type)</button>
+          </p>
+        </div>
+
+        <!-- Parsing / loading state -->
+        <div id="up-loading" style="display:none">
+          <div class="card" style="text-align:center;padding:40px">
+            <span class="spin" style="border-color:var(--surface-3);border-top-color:var(--accent)"></span>
+            <h3 style="font-size:20px;margin:14px 0 4px">Parsing your resume…</h3>
+            <p class="muted" style="font-size:14px;margin:0">Extracting text locally, then structuring with Claude. parse_status: <code style="font-family:var(--font-mono)">pending</code></p>
+            <div style="max-width:420px;margin:22px auto 0;text-align:left">
+              <div class="skel" style="height:13px;width:50%;margin-bottom:10px"></div>
+              <div class="skel" style="height:11px;width:100%;margin-bottom:7px"></div>
+              <div class="skel" style="height:11px;width:88%;margin-bottom:7px"></div>
+              <div class="skel" style="height:11px;width:72%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Parsed result -->
+        <div id="up-done" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <span class="badge badge-success">✓ parsed</span>
+                <div><b>asha_rao_resume.pdf</b><div class="subtle" style="font-size:12px">application/pdf · 180 KB · file_hash b94d27b9…</div></div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="resetUpload()">Replace</button>
+            </div>
+
+            <div class="sec"><h3>Extracted skills</h3>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <span class="chip">Python</span><span class="chip">FastAPI</span><span class="chip">PostgreSQL</span><span class="chip">Docker</span>
+              </div>
+            </div>
+            <div class="sec"><h3>Education</h3>
+              <div class="item"><b>B.E. Computer Science · PSG Tech</b><p class="muted" style="font-size:14px;margin:4px 0 0">CS · 2022–2026 · 8.7 CGPA</p></div>
+            </div>
+            <div class="sec"><h3>Experience</h3>
+              <div class="item"><b>Backend Intern · Acme Labs</b><p class="muted" style="font-size:14px;margin:4px 0 0">2025-05 → 2025-08 · Built REST APIs.</p></div>
+            </div>
+            <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-primary">Run AI Resume Review <span class="api" style="background:rgba(255,255,255,.18);color:#fff;border:none">POST /api/v1/ai/resume-review</span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobnav" aria-label="Primary mobile">
+    <button class="navlink"><span aria-hidden="true">◧</span>Home</button>
+    <button class="navlink" aria-current="page"><span aria-hidden="true">◑</span>Profile</button>
+    <button class="navlink"><span aria-hidden="true">✦</span>AI</button>
+    <button class="navlink"><span aria-hidden="true">≋</span>Jobs</button>
+    <button class="navlink"><span aria-hidden="true">⚙</span>More</button>
+  </nav>
+</div>
+
+<script>
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);try{localStorage.setItem('aurora-theme',t)}catch(e){}
+  document.getElementById('t-light').setAttribute('aria-pressed',String(t==='light'));document.getElementById('t-dark').setAttribute('aria-pressed',String(t==='dark'));}
+(function(){let s=null;try{s=localStorage.getItem('aurora-theme')}catch(e){}const os=matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';setTheme(s||os);})();
+
+const tabs=document.querySelectorAll('[role=tab]');
+function show(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
+  tabs.forEach(t=>t.setAttribute('aria-selected','false'));if(btn)btn.setAttribute('aria-selected','true');
+  document.querySelector('.topbar strong').textContent={view:'Profile',edit:'Edit profile',upload:'Resume upload'}[id];window.scrollTo(0,0);}
+
+/* Profile edit save (demo) */
+function saveProfile(e){e.preventDefault();const b=document.getElementById('save-btn'),s=document.getElementById('save-status');
+  b.disabled=true;b.innerHTML='<span class="spin"></span> Saving…';
+  setTimeout(()=>{b.disabled=false;b.textContent='Save changes';
+    const hasCert=document.getElementById('c-name').value.trim().length>0;
+    s.textContent=hasCert?'Saved · completion now 100%':'Saved · completion 80%';
+    s.style.color='var(--success)';},900);
+  return false;}
+
+/* Resume upload: client-side validation + loading + parsed result */
+const MAX=5*1024*1024;
+const dz=document.getElementById('dropzone'),fi=document.getElementById('file'),err=document.getElementById('up-error');
+dz.addEventListener('click',()=>fi.click());
+dz.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fi.click();}});
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+fi.addEventListener('change',()=>{if(fi.files[0])handleFile(fi.files[0]);});
+const okTypes=['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+function handleFile(f){
+  err.style.display='none';
+  const okExt=/\.(pdf|docx)$/i.test(f.name);
+  if(!okExt||(f.type&&!okTypes.includes(f.type))){return showErr('Unsupported file type. Please upload a PDF or DOCX. (415 unsupported_file_type)');}
+  if(f.size>MAX){return showErr('File is larger than 5 MB. Please upload a smaller file. (422 file_too_large)');}
+  startParse();
+}
+function showErr(m){err.textContent=m;err.style.display='flex';}
+function simulate(kind){
+  if(kind==='big')return showErr('File is larger than 5 MB. Please upload a smaller file. (422 file_too_large)');
+  if(kind==='type')return showErr('Unsupported file type. Please upload a PDF or DOCX. (415 unsupported_file_type)');
+  startParse();
+}
+function startParse(){
+  document.getElementById('up-idle').style.display='none';
+  document.getElementById('up-loading').style.display='block';
+  setTimeout(()=>{document.getElementById('up-loading').style.display='none';document.getElementById('up-done').style.display='block';},2000);
+}
+function resetUpload(){document.getElementById('up-done').style.display='none';document.getElementById('up-idle').style.display='block';fi.value='';}
+</script>
+</body>
+</html>

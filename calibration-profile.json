@@ -1,0 +1,13 @@
+{
+  "scoring": {
+    "weights": { "design_quality": 1.5, "originality": 1.5, "craft": 1.5, "functionality": 1.0 },
+    "threshold": 8,
+    "per_criterion_minimum": 5
+  },
+  "iteration": {
+    "max_iterations": 10,
+    "plateau_window": 3,
+    "plateau_delta": 0.3,
+    "pivot_after_plateau": true
+  }
+}

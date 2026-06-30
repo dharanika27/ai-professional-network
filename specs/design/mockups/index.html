@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mockups Index — AuroraAI Design (E8)</title>
+<!-- Navigation index for all E8 mockups. Self-contained, Aurora tokens. -->
+<style>
+:root{--aurora:linear-gradient(120deg,#5B5BF5 0%,#8B5CF6 45%,#22D3EE 100%);--font-display:"Fraunces","Georgia",serif;--font-body:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,monospace;--r-md:14px;--r-lg:20px;--r-full:999px;--dur:.18s;}
+[data-theme="light"]{--bg:#F7F8FC;--surface:#FFFFFF;--surface-2:#F1F2F9;--text:#15161D;--text-muted:#5A5E72;--text-subtle:#8A8FA3;--border:#E6E8F2;--accent-text:#3A3AD0;--accent-weak:#EEF0FE;--shadow-1:0 1px 2px rgba(18,19,31,.06),0 1px 3px rgba(18,19,31,.04);--shadow-2:0 10px 30px -12px rgba(35,30,90,.22);--shadow-glow:0 0 0 1px rgba(91,91,245,.18),0 12px 36px -10px rgba(91,91,245,.34);}
+[data-theme="dark"]{--bg:#0A0B12;--surface:#12131F;--surface-2:#1A1C2B;--text:#ECEDF5;--text-muted:#A2A7BE;--text-subtle:#6E7390;--border:#262A3E;--accent-text:#C4B5FD;--accent-weak:#1C1B33;--shadow-1:0 1px 2px rgba(0,0,0,.4);--shadow-2:0 12px 36px -14px rgba(0,0,0,.7);--shadow-glow:0 0 0 1px rgba(139,92,246,.35),0 14px 40px -12px rgba(139,92,246,.4);}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);line-height:1.6;-webkit-font-smoothing:antialiased;transition:background var(--dur),color var(--dur)}
+h1,h2,h3{font-family:var(--font-display);letter-spacing:-.02em;margin:0;font-weight:600;line-height:1.1}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid #8B5CF6;outline-offset:2px;border-radius:6px}
+.shell{max-width:1040px;margin:0 auto;padding:48px 24px 80px}
+.grad-text{background:var(--aurora);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text);font-weight:600}
+.muted{color:var(--text-muted)} .subtle{color:var(--text-subtle)}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:36px}
+.mark{width:34px;height:34px;border-radius:10px;background:var(--aurora);box-shadow:var(--shadow-glow);display:grid;place-items:center;color:#fff;font-weight:800}
+.brand{font-family:var(--font-display);font-weight:700;font-size:20px}
+.spacer{flex:1}
+.toggle{display:inline-flex;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-full);padding:5px}
+.toggle button{all:unset;display:grid;place-items:center;width:30px;height:30px;border-radius:var(--r-full);cursor:pointer;color:var(--text-muted)}
+.toggle button[aria-pressed="true"]{background:var(--surface);color:var(--accent-text);box-shadow:var(--shadow-1)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;margin-top:28px}
+.card{display:block;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-1);padding:22px;transition:transform var(--dur),box-shadow var(--dur)}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-2)}
+.tag{display:inline-block;font-family:var(--font-mono);font-size:11px;font-weight:600;padding:4px 9px;border-radius:var(--r-full);background:var(--accent-weak);color:var(--accent-text)}
+.api{font-family:var(--font-mono);font-size:11px;color:var(--text-subtle);display:block;margin-top:3px}
+.note{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 22px;margin-top:30px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="top">
+    <span class="mark" aria-hidden="true">A</span>
+    <div><div class="brand">Aurora<span class="grad-text">AI</span> · Mockups</div><div class="subtle" style="font-size:13px">Epic E8 · Frontend design contract</div></div>
+    <span class="spacer"></span>
+    <div class="toggle" role="group" aria-label="Theme">
+      <button id="t-light" aria-pressed="true" aria-label="Light" onclick="setTheme('light')">☀</button>
+      <button id="t-dark" aria-pressed="false" aria-label="Dark" onclick="setTheme('dark')">☾</button>
+    </div>
+  </div>
+
+  <p class="eyebrow">Design phase</p>
+  <h1 style="font-size:42px;max-width:18ch;margin-top:8px">Interactive mockups for the <span class="grad-text">AI Professional Network</span></h1>
+  <p class="muted" style="font-size:17px;max-width:62ch;margin-top:12px">Self-contained HTML, no network dependencies. All five share the Aurora design tokens defined in E8-S1. Working light/dark toggle on every screen (OS default + persisted). Open any file directly in a browser.</p>
+
+  <main class="grid">
+    <a class="card" href="E8-S1.html">
+      <span class="tag">E8-S1</span>
+      <h2 style="font-size:20px;margin:12px 0 4px">Design System</h2>
+      <p class="muted" style="font-size:14px;margin:0">Living style guide: tokens (light/dark), type scale, spacing/radius/shadow, and the full component inventory.</p>
+      <span class="api">Tokens · Buttons · Inputs · Cards · Badges · Modal · Toast · Skeleton</span>
+    </a>
+    <a class="card" href="E8-S2.html">
+      <span class="tag">E8-S2</span>
+      <h2 style="font-size:20px;margin:12px 0 4px">Landing · Register · Login · Onboarding</h2>
+      <p class="muted" style="font-size:14px;margin:0">Marketing entry, accessible auth forms with inline validation, and a 3-step onboarding flow.</p>
+      <span class="api">POST /api/v1/auth/register · /auth/login · PUT /api/v1/profile</span>
+    </a>
+    <a class="card" href="E8-S3.html">
+      <span class="tag">E8-S3</span>
+      <h2 style="font-size:20px;margin:12px 0 4px">Profile View · Edit · Resume Upload</h2>
+      <p class="muted" style="font-size:14px;margin:0">Completion ring, edit form, drag-drop upload with client validation, LLM disclosure, parse loading + structured result.</p>
+      <span class="api">GET/PUT /api/v1/profile · POST /api/v1/resume</span>
+    </a>
+    <a class="card" href="E8-S4.html">
+      <span class="tag">E8-S4</span>
+      <h2 style="font-size:20px;margin:12px 0 4px">AI Resume Review · Profile Optimization</h2>
+      <p class="muted" style="font-size:14px;margin:0">Streaming review, structured sections with grounding citations, score ring, plus 429 / 5xx / 409 error states.</p>
+      <span class="api">POST /api/v1/ai/resume-review · /ai/profile-optimization</span>
+    </a>
+    <a class="card" href="E8-S5.html">
+      <span class="tag">E8-S5</span>
+      <h2 style="font-size:20px;margin:12px 0 4px">Dashboard · Job Matching · Job Details · Settings</h2>
+      <p class="muted" style="font-size:14px;margin:0">Hub with completion + next actions, ranked matches (fit %, matched skills, gaps), full posting, and data-deletion settings.</p>
+      <span class="api">POST /api/v1/jobs/match · GET /api/v1/jobs/{id} · DELETE /api/v1/resume/{id}</span>
+    </a>
+    <a class="card" href="aesthetic-direction.md">
+      <span class="tag">DOC</span>
+      <h2 style="font-size:20px;margin:12px 0 4px">Aesthetic Direction</h2>
+      <p class="muted" style="font-size:14px;margin:0">The "Aurora" design language: personality, typography, token values, spatial language, and a11y commitments.</p>
+      <span class="api">aesthetic-direction.md</span>
+    </a>
+  </main>
+
+  <div class="note">
+    <b>Notes for the generator &amp; evaluator.</b>
+    <ul class="muted" style="margin:8px 0 0;padding-left:20px;font-size:14px">
+      <li>Mock data uses <b>snake_case</b> field names exactly matching <code style="font-family:var(--font-mono)">data-models.md</code> / <code style="font-family:var(--font-mono)">api-contracts.md</code>.</li>
+      <li>Interactive elements that trigger network calls are labelled with their endpoint (mono <code style="font-family:var(--font-mono)">.api</code> chips / <code style="font-family:var(--font-mono)">data-api</code>).</li>
+      <li>Each screen includes at least one empty/error/loading state, exposed via demo toggle buttons or clearly commented.</li>
+      <li>No schema gaps identified — every displayed field maps to a contract field.</li>
+    </ul>
+  </div>
+</div>
+<script>
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);try{localStorage.setItem('aurora-theme',t)}catch(e){}
+  document.getElementById('t-light').setAttribute('aria-pressed',String(t==='light'));document.getElementById('t-dark').setAttribute('aria-pressed',String(t==='dark'));}
+(function(){let s=null;try{s=localStorage.getItem('aurora-theme')}catch(e){}const os=matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';setTheme(s||os);})();
+</script>
+</body>
+</html>

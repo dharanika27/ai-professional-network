@@ -1,0 +1,1926 @@
+{
+  "project": "ai-professional-network",
+  "version": "1.0",
+  "generated_from": "specs/brd/brd.md",
+  "features": [
+    {
+      "id": "F001",
+      "category": "functional",
+      "story": "E1-S1",
+      "group": "A",
+      "description": "Pydantic models exist for all ten BRD entities (User, RefreshToken, Profile, Resume, ResumeReview, ProfileOptimization, Job, JobMatch, KnowledgeChunk, AIRequestLog).",
+      "steps": [
+        "Import the types module",
+        "Assert a class is defined for each of the ten entity names",
+        "Instantiate each model with valid sample data without error"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F002",
+      "category": "functional",
+      "story": "E1-S1",
+      "group": "A",
+      "description": "Profile model exposes typed fields for headline, summary, skills (list[str]), education, experience, certifications, projects, and completion_percentage as an int 0-100.",
+      "steps": [
+        "Inspect the Profile model field annotations",
+        "Assert skills is typed as list[str] and completion_percentage as int",
+        "Assert constructing Profile with completion_percentage=150 raises a validation error"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F003",
+      "category": "security",
+      "story": "E1-S1",
+      "group": "A",
+      "description": "Response DTOs are distinct from persistence models and never expose internal fields such as password_hash.",
+      "steps": [
+        "Inspect the user response DTO fields",
+        "Assert no field named password_hash or password is present",
+        "Serialize a user response DTO and confirm no hash value appears"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F004",
+      "category": "functional",
+      "story": "E1-S1",
+      "group": "A",
+      "description": "mypy --strict passes over the types module with zero errors.",
+      "steps": [
+        "Run mypy --strict on the types module",
+        "Assert the process exits with code 0 and reports no errors"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F005",
+      "category": "functional",
+      "story": "E1-S1",
+      "group": "A",
+      "description": "The structured-resume DTO matches the BRD schema {contact, skills, education, experience, certifications, projects}.",
+      "steps": [
+        "Inspect the structured-resume DTO",
+        "Assert exactly the keys contact, skills, education, experience, certifications, projects are present",
+        "Validate a sample structured resume against the DTO without error"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F006",
+      "category": "functional",
+      "story": "E1-S2",
+      "group": "A",
+      "description": "A single typed Settings object loads all configuration from environment variables and validates at startup.",
+      "steps": [
+        "Set required env vars and import the Settings object",
+        "Assert all expected fields are populated and typed",
+        "Assert an invalid-typed env value raises a validation error at load"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F007",
+      "category": "functional",
+      "story": "E1-S2",
+      "group": "A",
+      "description": "Application fails fast at startup with an actionable error naming the missing variable when a required secret is absent.",
+      "steps": [
+        "Unset DATABASE_URL (or JWT_SECRET / ANTHROPIC_API_KEY)",
+        "Attempt to load Settings",
+        "Assert startup fails with an error message naming the missing variable"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F008",
+      "category": "security",
+      "story": "E1-S2",
+      "group": "A",
+      "description": "No secret or API key appears as a hardcoded literal in the source tree.",
+      "steps": [
+        "Grep the source tree for API key / secret patterns",
+        "Assert zero hardcoded credential literals are found"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F009",
+      "category": "functional",
+      "story": "E1-S2",
+      "group": "A",
+      "description": "LLM config (model id, max tokens, 60s timeout, per-user AI rate limit) and upload policy (5 MB, PDF/DOCX) are read from centralized settings.",
+      "steps": [
+        "Inspect Settings for llm model id, max_tokens, timeout, ai_rate_limit, max_upload_size, allowed_types fields",
+        "Assert each is sourced from an environment variable",
+        "Assert no service hardcodes these values (grep)"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F010",
+      "category": "functional",
+      "story": "E1-S3",
+      "group": "A",
+      "description": "Migrations applied from a clean database succeed and enable the pgvector extension.",
+      "steps": [
+        "Start a clean PostgreSQL database",
+        "Run the migration command",
+        "Assert exit code 0 and that the vector extension is present (SELECT * FROM pg_extension)"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F011",
+      "category": "functional",
+      "story": "E1-S3",
+      "group": "A",
+      "description": "A session factory is the single import point yielding scoped DB sessions for repositories.",
+      "steps": [
+        "Import the session factory",
+        "Acquire a session and execute a trivial query",
+        "Assert the session is closed/returned after use"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F012",
+      "category": "functional",
+      "story": "E1-S3",
+      "group": "A",
+      "description": "Vector columns on Job, Resume, and KnowledgeChunk are declared with 384 dimensions.",
+      "steps": [
+        "Inspect the migration/DDL for the three tables",
+        "Assert each vector column dimension equals 384"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F013",
+      "category": "integration",
+      "story": "E1-S3",
+      "group": "A",
+      "description": "A health-check function runs SELECT 1 and reports healthy/unhealthy status.",
+      "steps": [
+        "Call the DB health-check function with a live database",
+        "Assert it returns a healthy status",
+        "Point it at an unreachable database and assert it returns unhealthy"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F014",
+      "category": "functional",
+      "story": "E1-S3",
+      "group": "A",
+      "description": "The latest migration is reversible: apply then rollback restores the prior schema.",
+      "steps": [
+        "Apply the latest migration",
+        "Roll back the latest migration",
+        "Assert the rollback completes without error and the schema matches the prior revision"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F015",
+      "category": "functional",
+      "story": "E5-S1",
+      "group": "A",
+      "description": "EmbeddingProvider interface defines embed_text and embed_batch methods.",
+      "steps": [
+        "Inspect the EmbeddingProvider interface",
+        "Assert embed_text(str) and embed_batch(list[str]) are declared"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F016",
+      "category": "functional",
+      "story": "E5-S1",
+      "group": "A",
+      "description": "Local bge-small-en-v1.5 implementation produces 384-dimension float vectors.",
+      "steps": [
+        "Call embed_text on a sample string",
+        "Assert the returned vector has length 384 and float elements"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F017",
+      "category": "functional",
+      "story": "E5-S1",
+      "group": "A",
+      "description": "Embedding is deterministic: identical input yields an identical vector across calls.",
+      "steps": [
+        "Call embed_text twice on the same input",
+        "Assert the two vectors are element-wise equal"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F018",
+      "category": "performance",
+      "story": "E5-S1",
+      "group": "A",
+      "description": "The embedding model loads once (lazy singleton) and is reused across calls.",
+      "steps": [
+        "Invoke embedding twice and observe model load",
+        "Assert the model is instantiated at most once per process"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F019",
+      "category": "functional",
+      "story": "E5-S1",
+      "group": "A",
+      "description": "Callers depend only on the EmbeddingProvider interface, so the provider is swappable via config.",
+      "steps": [
+        "Grep calling services for concrete model imports",
+        "Assert callers import only the EmbeddingProvider interface, not the bge implementation"
+      ],
+      "passes": true,
+      "last_evaluated": "2026-06-30",
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F020",
+      "category": "functional",
+      "story": "E2-S1",
+      "group": "B",
+      "description": "create_user persists a user with a generated id and rejects duplicate emails.",
+      "steps": [
+        "Call create_user with a new email",
+        "Assert a non-null id is returned",
+        "Call create_user again with the same email and assert a unique-constraint error is raised"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F021",
+      "category": "functional",
+      "story": "E2-S1",
+      "group": "B",
+      "description": "get_user_by_email is case-insensitive and returns None for unknown emails.",
+      "steps": [
+        "Create a user with Mixed-Case email",
+        "Look it up using a different case and assert the same user is returned",
+        "Look up an unknown email and assert None"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F022",
+      "category": "security",
+      "story": "E2-S1",
+      "group": "B",
+      "description": "Refresh tokens can be stored with expiry and revoked so they cannot be reused.",
+      "steps": [
+        "Store a refresh token with an expiry",
+        "Revoke it",
+        "Assert is_refresh_token_valid returns False for the revoked token"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F023",
+      "category": "security",
+      "story": "E2-S1",
+      "group": "B",
+      "description": "is_refresh_token_valid returns True only for active tokens and False for expired ones.",
+      "steps": [
+        "Store a token already past its expiry",
+        "Assert is_refresh_token_valid returns False",
+        "Store an active token and assert it returns True"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F024",
+      "category": "functional",
+      "story": "E3-S1",
+      "group": "B",
+      "description": "Each user has exactly one profile, retrievable by user id.",
+      "steps": [
+        "Create a user and retrieve their profile",
+        "Assert exactly one profile is returned",
+        "Assert a second retrieval does not create a duplicate"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F025",
+      "category": "functional",
+      "story": "E3-S1",
+      "group": "B",
+      "description": "update_profile atomically persists all profile sections.",
+      "steps": [
+        "Call update_profile with headline, summary, skills, education, experience, certifications, projects",
+        "Re-fetch the profile",
+        "Assert all updated sections match the input"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F026",
+      "category": "functional",
+      "story": "E3-S1",
+      "group": "B",
+      "description": "Completion percentage is recomputed deterministically; full profile is 100 and empty is 0.",
+      "steps": [
+        "Update a profile to fully populated and assert completion_percentage == 100",
+        "Update a profile to empty and assert completion_percentage == 0",
+        "Repeat with identical input and assert the same percentage each time"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F027",
+      "category": "security",
+      "story": "E3-S1",
+      "group": "B",
+      "description": "Updating one user's profile does not mutate another user's profile.",
+      "steps": [
+        "Create profiles for user A and user B",
+        "Update user A's profile",
+        "Assert user B's profile is unchanged"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F028",
+      "category": "functional",
+      "story": "E4-S1",
+      "group": "B",
+      "description": "A storage interface abstracts file persistence so the local-volume backend is swappable.",
+      "steps": [
+        "Inspect the storage interface and the local-volume implementation",
+        "Assert callers depend on the interface, not the concrete backend"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F029",
+      "category": "functional",
+      "story": "E4-S1",
+      "group": "B",
+      "description": "save_resume stores file bytes plus metadata (user id, filename, MIME, size, SHA-256 hash) and returns an id.",
+      "steps": [
+        "Call save_resume with sample bytes and metadata",
+        "Assert a resume id is returned and the SHA-256 hash is persisted",
+        "Assert the stored file bytes match the input"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F030",
+      "category": "functional",
+      "story": "E4-S1",
+      "group": "B",
+      "description": "delete_resume removes file and metadata and cascades to ResumeReview records.",
+      "steps": [
+        "Save a resume and create an associated ResumeReview",
+        "Call delete_resume(resume_id, user_id)",
+        "Assert file, metadata, and the ResumeReview are all gone"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F031",
+      "category": "security",
+      "story": "E4-S1",
+      "group": "B",
+      "description": "Stored resume files are not placed in any web-served/public path.",
+      "steps": [
+        "Save a resume",
+        "Inspect the storage location",
+        "Assert the path is outside any static/public-served directory"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F032",
+      "category": "functional",
+      "story": "E4-S1",
+      "group": "B",
+      "description": "Retrieving a resume by file hash returns the existing record (cache hit).",
+      "steps": [
+        "Save a resume and note its hash",
+        "Look up by that hash",
+        "Assert the existing record is returned"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F033",
+      "category": "functional",
+      "story": "E5-S2",
+      "group": "B",
+      "description": "Ingestion chunks curated markdown KB files with per-chunk source attribution and persists KnowledgeChunk rows.",
+      "steps": [
+        "Run KB ingestion over sample markdown files",
+        "Assert KnowledgeChunk rows are created",
+        "Assert each chunk records its source file reference"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F034",
+      "category": "functional",
+      "story": "E5-S2",
+      "group": "B",
+      "description": "Each KnowledgeChunk stores a 384-dimension embedding.",
+      "steps": [
+        "Inspect persisted chunks after ingestion",
+        "Assert each chunk's embedding vector length is 384"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F035",
+      "category": "functional",
+      "story": "E5-S2",
+      "group": "B",
+      "description": "A pgvector similarity query returns top-k nearest chunks ordered by similarity.",
+      "steps": [
+        "Embed a query and run the similarity search for k=5",
+        "Assert 5 chunks are returned ordered by descending similarity"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F036",
+      "category": "functional",
+      "story": "E5-S2",
+      "group": "B",
+      "description": "Re-running ingestion is idempotent and does not duplicate chunks for unchanged files.",
+      "steps": [
+        "Run ingestion, record chunk count",
+        "Run ingestion again over unchanged files",
+        "Assert the chunk count is unchanged"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F037",
+      "category": "functional",
+      "story": "E7-S1",
+      "group": "B",
+      "description": "Seed routine loads between 500 and 1000 realistic job postings with required fields.",
+      "steps": [
+        "Run the job seed routine",
+        "Assert the Job table row count is between 500 and 1000",
+        "Assert each row has title, company, description, location, and skills populated"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F038",
+      "category": "functional",
+      "story": "E7-S1",
+      "group": "B",
+      "description": "Each seeded job stores a 384-dimension embedding of its description.",
+      "steps": [
+        "Inspect seeded jobs",
+        "Assert each job's embedding vector length is 384"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F039",
+      "category": "functional",
+      "story": "E7-S1",
+      "group": "B",
+      "description": "retrieve_top_jobs returns the 10 nearest jobs by vector similarity, ordered by score.",
+      "steps": [
+        "Provide a query embedding to retrieve_top_jobs with k=10",
+        "Assert exactly 10 jobs are returned ordered by descending similarity"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F040",
+      "category": "functional",
+      "story": "E7-S1",
+      "group": "B",
+      "description": "The job source is abstracted behind a loader interface so a real jobs API can replace the seed.",
+      "steps": [
+        "Inspect the job loader interface and the seed implementation",
+        "Assert retrieval code depends on the interface, not the seed loader"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F041",
+      "category": "security",
+      "story": "E2-S2",
+      "group": "C",
+      "description": "register hashes the password with Argon2 (never plaintext) and rejects duplicate emails.",
+      "steps": [
+        "Register a new user",
+        "Assert the stored hash is an Argon2 hash and not the plaintext password",
+        "Register again with the same email and assert a typed error"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F042",
+      "category": "security",
+      "story": "E2-S2",
+      "group": "C",
+      "description": "login returns access+refresh tokens on correct password and an auth error on wrong password without revealing email existence.",
+      "steps": [
+        "Login with correct credentials and assert access and refresh tokens are returned",
+        "Login with wrong password and assert a generic auth error",
+        "Login with an unknown email and assert the same generic error (no existence leak)"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F043",
+      "category": "security",
+      "story": "E2-S2",
+      "group": "C",
+      "description": "refresh rotates the refresh token, revokes the old one, and rejects revoked/expired tokens.",
+      "steps": [
+        "Call refresh with a valid refresh token and assert a new access token and rotated refresh token",
+        "Attempt to reuse the old refresh token and assert rejection",
+        "Attempt refresh with an expired token and assert rejection"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F044",
+      "category": "security",
+      "story": "E2-S2",
+      "group": "C",
+      "description": "Access tokens are JWTs containing user id and expiry, verifiable with the configured secret.",
+      "steps": [
+        "Decode an issued access token with the configured JWT secret",
+        "Assert the payload contains the user id and an exp claim",
+        "Assert verification fails with a wrong secret"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F045",
+      "category": "security",
+      "story": "E2-S2",
+      "group": "C",
+      "description": "Passwords shorter than 8 characters are rejected before hashing.",
+      "steps": [
+        "Call register with a 5-character password",
+        "Assert a validation error is raised and no user is created"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F046",
+      "category": "functional",
+      "story": "E3-S2",
+      "group": "C",
+      "description": "get_profile returns the profile DTO including current completion percentage.",
+      "steps": [
+        "Call get_profile for a user",
+        "Assert the returned DTO includes completion_percentage"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F047",
+      "category": "functional",
+      "story": "E3-S2",
+      "group": "C",
+      "description": "update_profile validates field constraints and rejects invalid input with a typed error.",
+      "steps": [
+        "Call update_profile with an over-length headline or empty skills",
+        "Assert a typed validation error is raised",
+        "Call with valid data and assert success"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F048",
+      "category": "functional",
+      "story": "E3-S2",
+      "group": "C",
+      "description": "Skills are normalized on save (trimmed, deduplicated) so whitespace-only duplicates collapse.",
+      "steps": [
+        "Update a profile with skills ['Python', ' Python ', 'python ']",
+        "Re-fetch and assert duplicates differing only by whitespace are collapsed"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F049",
+      "category": "functional",
+      "story": "E3-S2",
+      "group": "C",
+      "description": "The service computes a list of incomplete profile sections for dashboard next-actions.",
+      "steps": [
+        "Call the service for a partially complete profile",
+        "Assert it returns a list naming the unpopulated sections"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F050",
+      "category": "security",
+      "story": "E3-S2",
+      "group": "C",
+      "description": "A user can only read/edit their own profile; a mismatched user id is rejected.",
+      "steps": [
+        "Attempt to edit another user's profile id",
+        "Assert an authorization error is raised"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F051",
+      "category": "functional",
+      "story": "E4-S2",
+      "group": "C",
+      "description": "Parsing accepts only PDF/DOCX up to 5 MB, validating MIME and extension, and rejects others.",
+      "steps": [
+        "Submit a valid PDF and assert it is accepted",
+        "Submit a .txt or 6 MB file and assert an actionable rejection",
+        "Submit a file whose extension and MIME mismatch and assert rejection"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F052",
+      "category": "functional",
+      "story": "E4-S2",
+      "group": "C",
+      "description": "Password-protected, corrupt, or empty-text files are rejected before the LLM step.",
+      "steps": [
+        "Submit a password-protected PDF and assert a specific error",
+        "Submit a corrupt file and assert rejection",
+        "Assert no LLM call is made for these inputs"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F053",
+      "category": "functional",
+      "story": "E4-S2",
+      "group": "C",
+      "description": "Local extraction plus LLM structuring yields the exact {contact, skills, education, experience, certifications, projects} schema, validated.",
+      "steps": [
+        "Parse a sample resume",
+        "Assert raw text is extracted locally",
+        "Assert the structured output validates against the six-key schema"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F054",
+      "category": "functional",
+      "story": "E4-S2",
+      "group": "C",
+      "description": "Invalid/incomplete LLM JSON triggers exactly one retry, then a safe error.",
+      "steps": [
+        "Stub the LLM to return invalid JSON once then valid JSON; assert success after one retry",
+        "Stub the LLM to return invalid JSON twice; assert a safe error with no internal detail"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F055",
+      "category": "security",
+      "story": "E4-S2",
+      "group": "C",
+      "description": "Resume-borne prompt injection is neutralized; system instructions take precedence.",
+      "steps": [
+        "Parse a resume fixture containing adversarial instructions (e.g. 'ignore previous instructions')",
+        "Assert the structuring task is unchanged and the injected instruction is not obeyed"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F056",
+      "category": "security",
+      "story": "E4-S2",
+      "group": "C",
+      "description": "No resume text or PII is written to logs during parsing.",
+      "steps": [
+        "Parse a resume and capture emitted logs",
+        "Assert logs contain request id and metadata only, with no resume text or PII"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F057",
+      "category": "functional",
+      "story": "E5-S3",
+      "group": "C",
+      "description": "retrieve(query_text, k) embeds the query and returns top-k chunks ordered by similarity.",
+      "steps": [
+        "Call retrieve with a query and k=3",
+        "Assert 3 chunks are returned ordered by descending similarity"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F058",
+      "category": "functional",
+      "story": "E5-S3",
+      "group": "C",
+      "description": "Retrieved chunks are assembled into a context block including per-chunk source attribution for citation.",
+      "steps": [
+        "Call retrieve and inspect the assembled context",
+        "Assert each included chunk carries its source reference"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F059",
+      "category": "functional",
+      "story": "E5-S3",
+      "group": "C",
+      "description": "Retrieval returns an empty-but-valid result when no sufficiently similar chunks exist.",
+      "steps": [
+        "Query against an empty or unrelated KB",
+        "Assert a valid empty context is returned rather than an error"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F060",
+      "category": "functional",
+      "story": "E5-S3",
+      "group": "C",
+      "description": "k is configurable with a bounded default, and the service performs no LLM call (retrieve separated from generate).",
+      "steps": [
+        "Inspect the retrieve service for a configurable, bounded default k",
+        "Grep the service and assert no LLM client call is present"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F061",
+      "category": "functional",
+      "story": "E6-S1",
+      "group": "C",
+      "description": "complete_structured validates model JSON against a schema and returns a typed object.",
+      "steps": [
+        "Call complete_structured with a schema and a stubbed valid response",
+        "Assert a typed object matching the schema is returned"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F062",
+      "category": "functional",
+      "story": "E6-S1",
+      "group": "C",
+      "description": "On invalid output or transient error the client retries once, then raises a safe error with no internal detail.",
+      "steps": [
+        "Stub one invalid response then a valid one; assert success after a single retry",
+        "Stub two failures; assert a safe error containing no provider/internal detail"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F063",
+      "category": "security",
+      "story": "E6-S1",
+      "group": "C",
+      "description": "Every LLM request logs request id and metadata only, with no prompt/resume/PII content.",
+      "steps": [
+        "Invoke the client and capture logs",
+        "Assert logs include a request id and exclude prompt content and PII"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F064",
+      "category": "functional",
+      "story": "E6-S1",
+      "group": "C",
+      "description": "The client enforces the configured 60s timeout and surfaces a graceful timeout error.",
+      "steps": [
+        "Stub a response that exceeds the timeout",
+        "Assert the client aborts at ~60s and returns a graceful timeout error"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F065",
+      "category": "functional",
+      "story": "E6-S1",
+      "group": "C",
+      "description": "Model id, max tokens, and provider settings come only from centralized config; client supports streaming.",
+      "steps": [
+        "Inspect the client and assert model/token settings are read from config, not hardcoded",
+        "Invoke the streaming completion mode and assert incremental chunks are yielded"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F066",
+      "category": "functional",
+      "story": "E6-S2",
+      "group": "D",
+      "description": "review_resume returns a schema-validated structured critique with strengths, weaknesses, ATS issues, and suggestions.",
+      "steps": [
+        "Call review_resume for a parsed resume",
+        "Assert the result validates against the review schema with the expected sections"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F067",
+      "category": "functional",
+      "story": "E6-S2",
+      "group": "D",
+      "description": "Each critique item references its grounding source (explainable, not generic).",
+      "steps": [
+        "Inspect the returned critique items",
+        "Assert each item carries a source/citation reference from the retrieved KB"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F068",
+      "category": "functional",
+      "story": "E6-S2",
+      "group": "D",
+      "description": "An unchanged resume (same hash) is served from cache without a new LLM call; a changed resume gets a fresh review.",
+      "steps": [
+        "Review a resume, then review the same resume again and assert no second LLM call (cache hit)",
+        "Review a modified resume and assert a fresh LLM call occurs"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F069",
+      "category": "functional",
+      "story": "E6-S2",
+      "group": "D",
+      "description": "The review supports streaming delivery of generated content.",
+      "steps": [
+        "Invoke review in streaming mode",
+        "Assert content is delivered incrementally"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F070",
+      "category": "functional",
+      "story": "E6-S2",
+      "group": "D",
+      "description": "An LLM failure after the single retry returns a safe error and persists no partial/invalid review.",
+      "steps": [
+        "Stub repeated LLM failure",
+        "Assert a safe error is returned and no ResumeReview row is persisted"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F071",
+      "category": "security",
+      "story": "E6-S2",
+      "group": "D",
+      "description": "Persisted ResumeReview and logs exclude raw resume text/PII beyond what the critique requires.",
+      "steps": [
+        "Inspect a persisted ResumeReview and the logs",
+        "Assert no raw resume text or PII is present in logs"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F072",
+      "category": "functional",
+      "story": "E6-S3",
+      "group": "D",
+      "description": "optimize_profile returns a schema-validated ProfileOptimization with concrete suggestions.",
+      "steps": [
+        "Call optimize_profile for a populated profile",
+        "Assert the result validates against the optimization schema and contains concrete suggestions"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F073",
+      "category": "functional",
+      "story": "E6-S3",
+      "group": "D",
+      "description": "Suggestions are section-specific and each references its grounding source.",
+      "steps": [
+        "Inspect the suggestions",
+        "Assert they are section-specific (headline, summary, skills) and each cites a source"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F074",
+      "category": "functional",
+      "story": "E6-S3",
+      "group": "D",
+      "description": "Insufficient profile content yields an actionable message rather than a low-quality result.",
+      "steps": [
+        "Call optimize_profile on a near-empty profile",
+        "Assert an actionable insufficient-content message is returned"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F075",
+      "category": "functional",
+      "story": "E6-S3",
+      "group": "D",
+      "description": "An LLM failure after the single retry returns a safe error and persists no invalid optimization; valid results are re-fetchable without re-invoking the LLM.",
+      "steps": [
+        "Stub repeated LLM failure and assert a safe error with no persisted optimization",
+        "After a successful optimization, re-fetch it and assert no new LLM call is made"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F076",
+      "category": "functional",
+      "story": "E7-S2",
+      "group": "D",
+      "description": "match_jobs embeds the resume and retrieves the top-10 candidate jobs before any LLM call.",
+      "steps": [
+        "Call match_jobs for a user with a parsed resume",
+        "Assert vector retrieval produces 10 candidates prior to the LLM re-rank step"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F077",
+      "category": "functional",
+      "story": "E7-S2",
+      "group": "D",
+      "description": "Claude re-ranks candidates returning per-job fit score (0-100), fit explanation, and gaps, schema-validated.",
+      "steps": [
+        "Run match_jobs and inspect each result",
+        "Assert each has a numeric fit score 0-100, a fit explanation, and a gaps list",
+        "Assert the output validates against the match schema"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F078",
+      "category": "functional",
+      "story": "E7-S2",
+      "group": "D",
+      "description": "Final results are ordered by descending fit score and persisted as JobMatch records.",
+      "steps": [
+        "Run match_jobs",
+        "Assert results are sorted by descending fit score",
+        "Assert JobMatch rows are persisted"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F079",
+      "category": "functional",
+      "story": "E7-S2",
+      "group": "D",
+      "description": "Weak/low-similarity candidates still return ranked results with honest low scores rather than failing.",
+      "steps": [
+        "Run match_jobs against a resume unrelated to the seed jobs",
+        "Assert ranked results are returned with low fit scores and no error"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F080",
+      "category": "functional",
+      "story": "E7-S2",
+      "group": "D",
+      "description": "An LLM failure after retry returns a safe error and persists no invalid match set; matching requires a parsed resume.",
+      "steps": [
+        "Stub repeated LLM failure and assert a safe error with no persisted matches",
+        "Call match_jobs with no parsed resume and assert an actionable message"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F081",
+      "category": "integration",
+      "story": "E2-S3",
+      "group": "E",
+      "description": "POST /api/auth/register returns 201 with a non-null user id and 409 on duplicate email.",
+      "steps": [
+        "POST /api/auth/register with a valid email and password",
+        "Assert status 201 and a non-null userId in the body",
+        "POST the same email again and assert status 409"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F082",
+      "category": "integration",
+      "story": "E2-S3",
+      "group": "E",
+      "description": "POST /api/auth/login returns 200 with tokens on valid credentials and 401 (generic) on invalid.",
+      "steps": [
+        "POST /api/auth/login with valid credentials and assert 200 with access and refresh tokens",
+        "POST with a wrong password and assert 401 with a generic message"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F083",
+      "category": "integration",
+      "story": "E2-S3",
+      "group": "E",
+      "description": "POST /api/auth/refresh returns 200 with a new access token on a valid refresh token and 401 otherwise.",
+      "steps": [
+        "POST /api/auth/refresh with a valid refresh token and assert 200 with a new access token",
+        "POST with a revoked token and assert 401"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F084",
+      "category": "security",
+      "story": "E2-S3",
+      "group": "E",
+      "description": "A protected endpoint returns 401 without a valid bearer token and 200 with one.",
+      "steps": [
+        "Call a protected endpoint with no token and assert 401",
+        "Call it with a valid access token and assert 200"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F085",
+      "category": "integration",
+      "story": "E2-S3",
+      "group": "E",
+      "description": "GET /api/health returns 200 with DB status when healthy and non-200 when the DB check fails.",
+      "steps": [
+        "GET /api/health with a live database and assert 200 with db status",
+        "Simulate DB failure and assert a non-200 status"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F086",
+      "category": "integration",
+      "story": "E2-S3",
+      "group": "E",
+      "description": "Malformed request bodies return 422 with field-level detail, never a 500.",
+      "steps": [
+        "POST a malformed body to an auth endpoint",
+        "Assert status 422 with field-level validation detail and no 500"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F087",
+      "category": "integration",
+      "story": "E3-S3",
+      "group": "E",
+      "description": "GET /api/profile returns 200 with the profile DTO (incl. completion_percentage) and 401 unauthenticated.",
+      "steps": [
+        "GET /api/profile with a valid token and assert 200 with completion_percentage",
+        "GET without a token and assert 401"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F088",
+      "category": "integration",
+      "story": "E3-S3",
+      "group": "E",
+      "description": "PUT /api/profile returns 200 with updated profile on valid payload and 422 on invalid.",
+      "steps": [
+        "PUT /api/profile with valid changes and assert 200 reflecting them",
+        "PUT with an over-length headline and assert 422 with field detail"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F089",
+      "category": "security",
+      "story": "E3-S3",
+      "group": "E",
+      "description": "Profile endpoints never expose another user's data or internal persistence fields.",
+      "steps": [
+        "Inspect GET /api/profile response for the authenticated user",
+        "Assert it contains only that user's data and no internal fields"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F090",
+      "category": "performance",
+      "story": "E3-S3",
+      "group": "E",
+      "description": "Non-AI profile endpoints respond with p95 latency under 300 ms.",
+      "steps": [
+        "Issue a benchmark of repeated GET /api/profile requests",
+        "Assert the p95 latency is under 300 ms"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F091",
+      "category": "integration",
+      "story": "E4-S3",
+      "group": "E",
+      "description": "POST /api/resume with a valid PDF/DOCX under 5 MB returns 201 with a resume id and structured content.",
+      "steps": [
+        "POST a valid PDF via multipart",
+        "Assert status 201 with a resume id and structured resume content"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F092",
+      "category": "integration",
+      "story": "E4-S3",
+      "group": "E",
+      "description": "Oversize or disallowed-type uploads return 422/415 with a clear message and store nothing.",
+      "steps": [
+        "POST a 6 MB file and assert 422/415",
+        "POST a .txt file and assert 422/415",
+        "Assert no resume record was created"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F093",
+      "category": "integration",
+      "story": "E4-S3",
+      "group": "E",
+      "description": "GET /api/resume returns 200 with current resume metadata/content or 404 when none exists.",
+      "steps": [
+        "GET /api/resume after an upload and assert 200 with content",
+        "GET for a user with no resume and assert 404"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F094",
+      "category": "security",
+      "story": "E4-S3",
+      "group": "E",
+      "description": "DELETE /api/resume/{id} returns 204 and cascades; deleting another user's resume returns 403/404.",
+      "steps": [
+        "DELETE the authenticated user's resume and assert 204 with file/metadata/reviews removed",
+        "Attempt to DELETE another user's resume id and assert 403/404"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F095",
+      "category": "functional",
+      "story": "E4-S3",
+      "group": "E",
+      "description": "The external-LLM processing disclosure is surfaced in the resume API contract/response.",
+      "steps": [
+        "Inspect the resume upload API contract/response",
+        "Assert the external-LLM processing disclosure is present"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F096",
+      "category": "integration",
+      "story": "E6-S4",
+      "group": "E",
+      "description": "POST /api/ai/resume-review returns 200 with the structured review (streaming) or 404 when no resume exists.",
+      "steps": [
+        "POST /api/ai/resume-review for a user with an uploaded resume and assert 200 with structured review",
+        "POST for a user with no resume and assert 404"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F097",
+      "category": "integration",
+      "story": "E6-S4",
+      "group": "E",
+      "description": "POST /api/ai/profile-optimization returns 200 with the structured optimization.",
+      "steps": [
+        "POST /api/ai/profile-optimization for an authenticated user with a populated profile",
+        "Assert status 200 with structured optimization suggestions"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F098",
+      "category": "security",
+      "story": "E6-S4",
+      "group": "E",
+      "description": "Exceeding the per-user AI rate limit returns 429 without invoking the LLM.",
+      "steps": [
+        "Call an AI endpoint beyond the configured per-user limit",
+        "Assert status 429 with a retry indication",
+        "Assert no LLM call is made on the throttled request"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F099",
+      "category": "integration",
+      "story": "E6-S4",
+      "group": "E",
+      "description": "An upstream AI failure/timeout returns 503/504 with a safe message and no internal detail; endpoints require auth.",
+      "steps": [
+        "Simulate an AI provider failure and assert 503/504 with a safe message",
+        "Call the endpoints without a token and assert 401"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F100",
+      "category": "integration",
+      "story": "E7-S3",
+      "group": "E",
+      "description": "POST /api/jobs/match returns 200 with ranked jobs including fit score, fit explanation, and gaps.",
+      "steps": [
+        "POST /api/jobs/match for a user with a parsed resume",
+        "Assert 200 with a ranked list where each job has fit score, fit explanation, and gaps"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F101",
+      "category": "integration",
+      "story": "E7-S3",
+      "group": "E",
+      "description": "GET /api/jobs/{id} returns 200 with full details or 404 if missing.",
+      "steps": [
+        "GET /api/jobs/{id} for a seeded job and assert 200 with full details",
+        "GET a non-existent id and assert 404"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F102",
+      "category": "integration",
+      "story": "E7-S3",
+      "group": "E",
+      "description": "Matching with no parsed resume returns 409/422 with an actionable message, not 500; rate limit returns 429; endpoints require auth.",
+      "steps": [
+        "POST /api/jobs/match with no parsed resume and assert 409/422 (not 500)",
+        "Exceed the per-user AI rate limit and assert 429 without an LLM call",
+        "Call without a token and assert 401"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F103",
+      "category": "ui",
+      "story": "E8-S1",
+      "group": "F",
+      "description": "A design-token system powers both light and dark themes from a single source.",
+      "steps": [
+        "Inspect the token definitions for colors, spacing, radii, typography",
+        "Toggle theme and assert both themes derive from the same token source"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F104",
+      "category": "ui",
+      "story": "E8-S1",
+      "group": "F",
+      "description": "Theme defaults to OS preference and a manual toggle persists across reloads.",
+      "steps": [
+        "Load the app with OS dark preference and assert dark theme is applied",
+        "Toggle to light, reload, and assert the chosen theme persists"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F105",
+      "category": "ui",
+      "story": "E8-S1",
+      "group": "F",
+      "description": "Core components render without layout breakage at mobile, tablet, and desktop breakpoints.",
+      "steps": [
+        "Render button, card, input, and nav shell at 375px, 768px, and 1280px widths",
+        "Assert no overflow or layout breakage at each breakpoint"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F106",
+      "category": "ui",
+      "story": "E8-S1",
+      "group": "F",
+      "description": "Interactive elements have visible focus, sufficient contrast (WCAG 2.1 AA), and full keyboard navigation.",
+      "steps": [
+        "Tab through interactive elements and assert visible focus indicators",
+        "Run an accessibility contrast check and assert AA compliance"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F107",
+      "category": "ui",
+      "story": "E8-S1",
+      "group": "F",
+      "description": "tsc and eslint pass over the UI package with zero errors.",
+      "steps": [
+        "Run tsc on the UI package and assert zero errors",
+        "Run eslint on the UI package and assert zero errors"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F108",
+      "category": "ui",
+      "story": "E8-S2",
+      "group": "G",
+      "description": "Register screen calls the register API, stores tokens, and routes into onboarding on success.",
+      "steps": [
+        "Fill and submit the Register form with valid data",
+        "Assert POST /api/auth/register is called and tokens are stored",
+        "Assert navigation proceeds to onboarding"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F109",
+      "category": "ui",
+      "story": "E8-S2",
+      "group": "G",
+      "description": "Login routes to the dashboard on success; invalid credentials show an inline accessible error without email-existence leak.",
+      "steps": [
+        "Login with valid credentials and assert navigation to the dashboard",
+        "Login with invalid credentials and assert an inline accessible error that does not reveal email existence"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F110",
+      "category": "ui",
+      "story": "E8-S2",
+      "group": "G",
+      "description": "Auth forms validate inline and expose validation errors to screen readers.",
+      "steps": [
+        "Submit an invalid email and a short password",
+        "Assert inline validation messages appear with accessible aria associations"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F111",
+      "category": "ui",
+      "story": "E8-S2",
+      "group": "G",
+      "description": "Onboarding collects initial profile fields, persists them, and routes to the dashboard.",
+      "steps": [
+        "Complete the onboarding steps with profile data",
+        "Assert the data is persisted via the profile API",
+        "Assert navigation to the dashboard"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F112",
+      "category": "ui",
+      "story": "E8-S2",
+      "group": "G",
+      "description": "Landing, Register, Login, and Onboarding render correctly in light/dark and across breakpoints.",
+      "steps": [
+        "Render each screen in light and dark themes",
+        "Render each at mobile/tablet/desktop and assert no layout breakage"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F113",
+      "category": "ui",
+      "story": "E8-S3",
+      "group": "G",
+      "description": "Profile View renders the profile from the API with a visible completion indicator.",
+      "steps": [
+        "Open Profile View",
+        "Assert it renders data from GET /api/profile including a visible completion percentage"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F114",
+      "category": "ui",
+      "story": "E8-S3",
+      "group": "G",
+      "description": "Profile Edit saves via the API and reflects updated values and completion without full reload.",
+      "steps": [
+        "Edit profile fields and save",
+        "Assert PUT /api/profile is called and the view updates with new values and completion percentage without a full reload"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F115",
+      "category": "ui",
+      "story": "E8-S3",
+      "group": "G",
+      "description": "Resume Upload accepts PDF/DOCX, rejects oversize/invalid client-side, and shows a loading state during parsing.",
+      "steps": [
+        "Attempt to upload an oversize/invalid file and assert a clear client-side rejection",
+        "Upload a valid file and assert a visible loading state while POST /api/resume runs"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F116",
+      "category": "ui",
+      "story": "E8-S3",
+      "group": "G",
+      "description": "The external-LLM processing disclosure is displayed before/at resume upload, and structured content shows after success.",
+      "steps": [
+        "Open the upload screen and assert the LLM-processing disclosure is visible",
+        "After a successful upload, assert structured content (skills, education, experience) is displayed"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F117",
+      "category": "ui",
+      "story": "E8-S4",
+      "group": "G",
+      "description": "The Resume Review screen triggers the review endpoint and progressively renders streamed content.",
+      "steps": [
+        "Open Resume Review and trigger the review",
+        "Assert streamed content renders incrementally as it arrives"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F118",
+      "category": "ui",
+      "story": "E8-S4",
+      "group": "G",
+      "description": "The review renders as structured sections with visible grounding citations, not a raw blob.",
+      "steps": [
+        "Inspect the rendered review",
+        "Assert sections (strengths, weaknesses, ATS issues, suggestions) and visible citations are present"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F119",
+      "category": "ui",
+      "story": "E8-S4",
+      "group": "G",
+      "description": "The Profile Optimization screen triggers the endpoint and renders section-specific suggestions with citations.",
+      "steps": [
+        "Open Profile Optimization and trigger it",
+        "Assert section-specific suggestions render, each with a citation"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F120",
+      "category": "ui",
+      "story": "E8-S4",
+      "group": "G",
+      "description": "AI errors (429, 5xx) render an accessible actionable message with retry; both screens show a loading state and render in both themes.",
+      "steps": [
+        "Simulate a 429 and a 5xx and assert an accessible actionable message with a retry option",
+        "Assert a clear loading state during pending requests and correct rendering in light/dark themes"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F121",
+      "category": "ui",
+      "story": "E8-S5",
+      "group": "G",
+      "description": "The Dashboard surfaces profile completion, recent AI analyses, matched jobs, and recommended next actions, each linking onward.",
+      "steps": [
+        "Open the Dashboard",
+        "Assert it shows profile completion, recent AI analyses, matched jobs, and next actions",
+        "Assert each card links to its respective screen"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F122",
+      "category": "ui",
+      "story": "E8-S5",
+      "group": "G",
+      "description": "The Job Matching screen calls the match endpoint and renders ranked jobs with fit score, fit explanation, and gaps.",
+      "steps": [
+        "Open Job Matching and trigger the match",
+        "Assert ranked jobs render with fit score, fit explanation, and gaps per job"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F123",
+      "category": "ui",
+      "story": "E8-S5",
+      "group": "G",
+      "description": "Selecting a matched job opens Job Details via the job details endpoint with full posting info.",
+      "steps": [
+        "Click a matched job",
+        "Assert Job Details opens via GET /api/jobs/{id} and shows full posting information"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F124",
+      "category": "ui",
+      "story": "E8-S5",
+      "group": "G",
+      "description": "Settings allows deleting the resume and AI analyses with confirmation and toggling the theme.",
+      "steps": [
+        "Open Settings and initiate resume deletion",
+        "Assert a confirmation step precedes DELETE /api/resume/{id}",
+        "Toggle the theme and assert it changes"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    },
+    {
+      "id": "F125",
+      "category": "ui",
+      "story": "E8-S5",
+      "group": "G",
+      "description": "All Group-G screens render in light/dark, across breakpoints, and are keyboard navigable to WCAG 2.1 AA.",
+      "steps": [
+        "Render Dashboard, Job Matching, Job Details, Settings in both themes and at all breakpoints",
+        "Tab through each screen and assert full keyboard navigation with visible focus and AA contrast"
+      ],
+      "passes": false,
+      "last_evaluated": null,
+      "failure_reason": null,
+      "failure_layer": null
+    }
+  ]
+}

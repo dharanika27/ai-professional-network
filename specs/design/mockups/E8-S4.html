@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Resume Review · Profile Optimization — AuroraAI (E8-S4)</title>
+<!--
+  E8-S4 — AI feature screens. Resume Review (with simulated streaming/SSE display)
+  & Profile Optimization. Structured sections w/ grounding citations, score viz,
+  loading + error (429 / 5xx) states. Reuses E8-S1 Aurora tokens.
+  Mock data snake_case per ResumeReviewResponse / ProfileOptimizationResponse.
+-->
+<style>
+:root{--brand-1:#5B5BF5;--brand-2:#8B5CF6;--brand-3:#22D3EE;--aurora:linear-gradient(120deg,#5B5BF5 0%,#8B5CF6 45%,#22D3EE 100%);--aurora-soft:linear-gradient(120deg,rgba(91,91,245,.14),rgba(34,211,238,.14));--font-display:"Fraunces","Georgia",serif;--font-body:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,monospace;--r-sm:8px;--r-md:14px;--r-lg:20px;--r-xl:28px;--r-full:999px;--ease:cubic-bezier(.22,.61,.36,1);--dur:.18s;}
+[data-theme="light"]{--bg:#F7F8FC;--surface:#FFFFFF;--surface-2:#F1F2F9;--surface-3:#E9EBF6;--text:#15161D;--text-muted:#5A5E72;--text-subtle:#8A8FA3;--border:#E6E8F2;--border-strong:#D2D6E6;--ring:#5B5BF5;--accent:#5B5BF5;--accent-weak:#EEF0FE;--accent-text:#3A3AD0;--success:#16A34A;--success-weak:#E7F6ED;--warning:#B45309;--warning-weak:#FBF1E3;--danger:#DC2626;--danger-weak:#FCEAEA;--shadow-1:0 1px 2px rgba(18,19,31,.06),0 1px 3px rgba(18,19,31,.04);--shadow-2:0 10px 30px -12px rgba(35,30,90,.22);--shadow-glow:0 0 0 1px rgba(91,91,245,.18),0 12px 36px -10px rgba(91,91,245,.34);--skel:linear-gradient(90deg,#ECEEF7 25%,#F6F7FC 37%,#ECEEF7 63%);}
+[data-theme="dark"]{--bg:#0A0B12;--surface:#12131F;--surface-2:#1A1C2B;--surface-3:#22243A;--text:#ECEDF5;--text-muted:#A2A7BE;--text-subtle:#6E7390;--border:#262A3E;--border-strong:#343A55;--ring:#8B5CF6;--accent:#8B5CF6;--accent-weak:#1C1B33;--accent-text:#C4B5FD;--success:#34D399;--success-weak:#10261D;--warning:#FBBF24;--warning-weak:#2A2110;--danger:#F87171;--danger-weak:#2B1414;--shadow-1:0 1px 2px rgba(0,0,0,.4);--shadow-2:0 12px 36px -14px rgba(0,0,0,.7);--shadow-glow:0 0 0 1px rgba(139,92,246,.35),0 14px 40px -12px rgba(139,92,246,.4);--skel:linear-gradient(90deg,#1A1C2B 25%,#23263A 37%,#1A1C2B 63%);}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;transition:background var(--dur),color var(--dur)}
+h1,h2,h3{font-family:var(--font-display);line-height:1.1;letter-spacing:-.02em;margin:0;font-weight:600}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:6px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.grad-text{background:var(--aurora);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text);font-weight:600}
+.muted{color:var(--text-muted)} .subtle{color:var(--text-subtle)}
+.api{font-family:var(--font-mono);font-size:11px;color:var(--text-subtle);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;display:inline-block}
+
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--text);padding:6px 8px 18px}
+.brand .mark{width:28px;height:28px;border-radius:8px;background:var(--aurora);box-shadow:var(--shadow-glow);display:grid;place-items:center;color:#fff;font-family:var(--font-body);font-weight:800;font-size:14px}
+.navlink{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-md);color:var(--text-muted);font-size:14px;font-weight:600;cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+.navlink:hover{background:var(--surface-2);color:var(--text)}
+.navlink[aria-current="page"]{background:var(--accent-weak);color:var(--accent-text)}
+.sb-foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 8px;border-top:1px solid var(--border)}
+.avatar{width:34px;height:34px;border-radius:var(--r-full);background:var(--aurora);display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px}
+.topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;height:64px;padding:0 28px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(10px)}
+.spacer{flex:1}
+.tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-full);padding:4px}
+.tabs button{all:unset;font-size:13px;font-weight:600;padding:7px 14px;border-radius:var(--r-full);cursor:pointer;color:var(--text-muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--accent-text);box-shadow:var(--shadow-1)}
+.toggle{display:inline-flex;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-full);padding:5px}
+.toggle button{all:unset;display:grid;place-items:center;width:30px;height:30px;border-radius:var(--r-full);cursor:pointer;color:var(--text-muted)}
+.toggle button[aria-pressed="true"]{background:var(--surface);color:var(--accent-text);box-shadow:var(--shadow-1)}
+.content{max-width:980px;margin:0 auto;padding:32px 28px 80px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px;border-radius:var(--r-md);padding:11px 18px;border:1px solid transparent;cursor:pointer;font-family:inherit;transition:transform var(--dur),box-shadow var(--dur)}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--aurora);color:#fff;box-shadow:var(--shadow-glow)}
+.btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border-strong)}
+.btn-ghost{background:transparent;color:var(--text-muted)}
+.btn-sm{padding:7px 13px;font-size:13px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-1);padding:24px}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:var(--r-full)}
+.badge-brand{background:var(--accent-weak);color:var(--accent-text)} .badge-success{background:var(--success-weak);color:var(--success)} .badge-warning{background:var(--warning-weak);color:var(--warning)} .badge-danger{background:var(--danger-weak);color:var(--danger)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:6px 12px;border-radius:var(--r-full);background:var(--accent-weak);color:var(--accent-text)}
+.page{display:none}.page.active{display:block}
+
+/* Score ring */
+.scorewrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.ring{--p:0;--sz:128px;width:var(--sz);height:var(--sz);border-radius:50%;display:grid;place-items:center;background:conic-gradient(from -90deg,var(--brand-1),var(--brand-2),var(--brand-3) calc(var(--p)*1%),var(--surface-2) 0);position:relative;flex:none}
+.ring::after{content:"";position:absolute;inset:10px;border-radius:50%;background:var(--surface)}
+.ring>div{position:relative;text-align:center}
+.ring b{font-family:var(--font-mono);font-weight:700;font-size:30px}
+
+/* Review section card */
+.rev-sec{border:1px solid var(--border);border-radius:var(--r-md);padding:18px;margin-top:14px;background:var(--surface)}
+.rev-sec h3{font-size:16px;display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.rev-item{display:flex;gap:12px;padding:11px 0;border-bottom:1px dashed var(--border)}
+.rev-item:last-child{border-bottom:none}
+.rev-item .dot{width:7px;height:7px;border-radius:50%;margin-top:9px;flex:none}
+.cite{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--r-full);background:var(--accent-weak);color:var(--accent-text);cursor:help;white-space:nowrap}
+.cite::before{content:"❝";font-size:10px}
+
+/* streaming cursor */
+.stream{white-space:pre-wrap;font-size:15px}
+.cursor{display:inline-block;width:8px;height:18px;background:var(--accent);vertical-align:-3px;animation:blink .9s steps(1) infinite;border-radius:2px}
+@keyframes blink{50%{opacity:0}}
+.spin{width:18px;height:18px;border:2px solid var(--surface-3);border-top-color:var(--accent);border-radius:50%;animation:rot .7s linear infinite;display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
+.alert{display:flex;gap:12px;align-items:flex-start;border-radius:var(--r-md);padding:16px;font-size:14px;border:1px solid transparent}
+.alert-danger{background:var(--danger-weak);color:var(--danger)}
+.alert-warning{background:var(--warning-weak);color:var(--warning)}
+.skel{background:var(--skel);background-size:400% 100%;animation:sh 1.3s infinite linear;border-radius:var(--r-sm)}
+@keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.srcs{margin-top:18px;border-top:1px solid var(--border);padding-top:16px}
+.src{display:flex;gap:10px;font-size:13px;padding:8px 0}
+.demobar{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 22px;padding:12px;background:var(--surface-2);border-radius:var(--r-md);border:1px solid var(--border)}
+
+.mobnav{display:none}
+@media(max-width:860px){.app{grid-template-columns:1fr}.sidebar{display:none}.mobnav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--surface);border-top:1px solid var(--border);padding:8px;justify-content:space-around}.mobnav .navlink{flex-direction:column;gap:2px;font-size:11px;padding:6px}.content{padding-bottom:90px}.tabs button{padding:6px 9px}}
+@media(max-width:560px){.content{padding:20px 16px 90px}.topbar{padding:0 16px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" aria-label="Primary">
+    <div class="brand"><span class="mark" aria-hidden="true">A</span>Aurora<span class="grad-text">AI</span></div>
+    <button class="navlink"><span aria-hidden="true">◧</span>Dashboard</button>
+    <button class="navlink"><span aria-hidden="true">◑</span>Profile</button>
+    <button class="navlink" aria-current="page"><span aria-hidden="true">✦</span>AI Insights</button>
+    <button class="navlink"><span aria-hidden="true">≋</span>Job Matches</button>
+    <button class="navlink"><span aria-hidden="true">⚙</span>Settings</button>
+    <div class="sb-foot"><span class="avatar" aria-hidden="true">AR</span><div style="font-size:13px;line-height:1.3"><b>Asha Rao</b><div class="subtle" style="font-size:12px">asha.rao@example.com</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <strong style="font-family:var(--font-display);font-size:17px">AI Insights</strong>
+      <div class="spacer"></div>
+      <div class="tabs" role="tablist" aria-label="AI features">
+        <button role="tab" aria-selected="true" onclick="show('review',this)">Resume Review</button>
+        <button role="tab" aria-selected="false" onclick="show('optim',this)">Profile Optimization</button>
+      </div>
+      <div class="toggle" role="group" aria-label="Theme">
+        <button id="t-light" aria-pressed="true" aria-label="Light" onclick="setTheme('light')">☀</button>
+        <button id="t-dark" aria-pressed="false" aria-label="Dark" onclick="setTheme('dark')">☾</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- ================= RESUME REVIEW ================= -->
+      <section class="page active" id="review" aria-label="AI Resume Review">
+        <p class="eyebrow">AI · grounded by RAG</p>
+        <h1 style="font-size:32px;margin:6px 0 4px">Resume Review</h1>
+        <p class="muted" style="margin:0">Structured, explainable critique with citations. <span class="api">POST /api/v1/ai/resume-review · Accept: text/event-stream</span></p>
+
+        <div class="demobar" role="group" aria-label="Demo state controls">
+          <span class="subtle" style="font-size:12px;align-self:center;margin-right:4px">Preview state:</span>
+          <button class="btn btn-primary btn-sm" onclick="runReview()">▶ Run (streaming)</button>
+          <button class="btn btn-secondary btn-sm" onclick="revState('loading')">Loading</button>
+          <button class="btn btn-secondary btn-sm" onclick="revState('done')">Completed</button>
+          <button class="btn btn-secondary btn-sm" onclick="revState('429')">Error 429</button>
+          <button class="btn btn-secondary btn-sm" onclick="revState('5xx')">Error 5xx</button>
+        </div>
+
+        <!-- LOADING / STREAMING -->
+        <div id="rev-loading" class="card" style="display:none" aria-live="polite">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><span class="spin"></span><b id="rev-loading-label">Analyzing your resume…</b><span class="api" style="margin-left:auto">request_id 9f86…a08</span></div>
+          <div class="stream" id="rev-stream"></div>
+        </div>
+
+        <!-- ERROR 429 -->
+        <div id="rev-429" class="alert alert-warning" style="display:none" role="alert">
+          <span aria-hidden="true">⏳</span>
+          <div style="flex:1"><b>You've reached the hourly AI limit</b><div style="margin-top:3px">You can run 10 AI analyses per hour. Try again in <b>42 minutes</b>. <span class="subtle">(429 rate_limited · Retry-After: 2520)</span></div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="runReview()">Retry</button></div>
+        </div>
+
+        <!-- ERROR 5xx -->
+        <div id="rev-5xx" class="alert alert-danger" style="display:none" role="alert">
+          <span aria-hidden="true">!</span>
+          <div style="flex:1"><b>The AI provider is temporarily unavailable</b><div style="margin-top:3px">Your resume was not changed. Please try again in a moment. <span class="subtle">(503 ai_provider_unavailable · request_id 55…eee)</span></div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="runReview()">Retry</button></div>
+        </div>
+
+        <!-- COMPLETED -->
+        <div id="rev-done" style="display:none">
+          <div class="card" style="margin-top:18px">
+            <div class="scorewrap">
+              <div class="ring" style="--p:78" role="img" aria-label="Resume score 78 out of 100"><div><b>78</b><div class="subtle" style="font-size:11px">/ 100</div></div></div>
+              <div style="flex:1;min-width:220px">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="badge badge-success">Strong base</span><span class="badge badge-brand">model: claude-opus-4-8</span><span class="badge" style="background:var(--surface-2);color:var(--text-muted)">cached: false</span></div>
+                <h2 style="font-size:20px;margin:10px 0 4px">Overall summary</h2>
+                <p class="muted" style="margin:0">A strong technical foundation with clear project impact. Tightening ATS formatting and quantifying more outcomes would lift this resume into the top tier for entry-level backend roles.</p>
+              </div>
+            </div>
+
+            <div class="rev-sec">
+              <h3><span class="badge badge-success" style="padding:3px 8px">✓</span> Strengths</h3>
+              <div class="rev-item"><span class="dot" style="background:var(--success)"></span><div>Clear, quantified project impact (e.g. "cut p95 latency by 40%"). <span class="cite" title="ats_best_practices.md — Use measurable outcomes…">ats-1</span></div></div>
+              <div class="rev-item"><span class="dot" style="background:var(--success)"></span><div>Relevant modern backend stack (Python, FastAPI, PostgreSQL). <span class="cite" title="resume_writing.md — Lead with role-relevant tools…">resume-2</span></div></div>
+            </div>
+
+            <div class="rev-sec">
+              <h3><span class="badge badge-warning" style="padding:3px 8px">△</span> Weaknesses</h3>
+              <div class="rev-item"><span class="dot" style="background:var(--warning)"></span><div>Summary is generic; it doesn't lead with your strongest differentiator. <span class="cite" title="resume_writing.md — Open with a sharp value statement.">resume-3</span></div></div>
+            </div>
+
+            <div class="rev-sec">
+              <h3><span class="badge badge-danger" style="padding:3px 8px">⚠</span> ATS issues</h3>
+              <div class="rev-item"><span class="dot" style="background:var(--danger)"></span><div>A two-column layout can confuse ATS parsers — prefer a single-column structure. <span class="cite" title="ats_best_practices.md — Avoid tables and multi-column layouts.">ats-2</span></div></div>
+            </div>
+
+            <div class="rev-sec">
+              <h3><span class="badge badge-brand" style="padding:3px 8px">✦</span> Suggestions</h3>
+              <div class="rev-item"><span class="dot" style="background:var(--accent)"></span><div>Add 1–2 metrics to your education or projects to reinforce outcomes. <span class="cite" title="resume_writing.md — Quantify wherever possible.">resume-5</span></div></div>
+            </div>
+
+            <div class="srcs">
+              <p class="eyebrow" style="margin-bottom:6px">Sources</p>
+              <div class="src"><span class="cite">ats-1</span><div><b>ats_best_practices.md</b> — <span class="muted">"Use measurable outcomes and action verbs; ATS rewards specificity."</span></div></div>
+              <div class="src"><span class="cite">resume-3</span><div><b>resume_writing.md</b> — <span class="muted">"Open with a sharp value statement tailored to the target role."</span></div></div>
+              <div class="src"><span class="cite">ats-2</span><div><b>ats_best_practices.md</b> — <span class="muted">"Avoid tables and multi-column layouts that break text extraction."</span></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PROFILE OPTIMIZATION ================= -->
+      <section class="page" id="optim" aria-label="AI Profile Optimization">
+        <p class="eyebrow">AI · grounded by RAG</p>
+        <h1 style="font-size:32px;margin:6px 0 4px">Profile Optimization</h1>
+        <p class="muted" style="margin:0">Section-specific suggestions with citations. <span class="api">POST /api/v1/ai/profile-optimization</span></p>
+
+        <div class="demobar" role="group" aria-label="Demo state controls">
+          <span class="subtle" style="font-size:12px;align-self:center;margin-right:4px">Preview state:</span>
+          <button class="btn btn-primary btn-sm" onclick="optState('loading');setTimeout(()=>optState('done'),1600)">▶ Run</button>
+          <button class="btn btn-secondary btn-sm" onclick="optState('loading')">Loading</button>
+          <button class="btn btn-secondary btn-sm" onclick="optState('done')">Completed</button>
+          <button class="btn btn-secondary btn-sm" onclick="optState('409')">Error 409 (sparse)</button>
+        </div>
+
+        <div id="opt-loading" class="card" style="display:none" aria-live="polite">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><span class="spin"></span><b>Optimizing your profile…</b></div>
+          <div class="skel" style="height:14px;width:40%;margin-bottom:12px"></div>
+          <div class="skel" style="height:11px;width:100%;margin-bottom:8px"></div>
+          <div class="skel" style="height:11px;width:92%;margin-bottom:8px"></div>
+          <div class="skel" style="height:11px;width:70%"></div>
+        </div>
+
+        <div id="opt-409" class="alert alert-warning" style="display:none" role="alert">
+          <span aria-hidden="true">📝</span>
+          <div style="flex:1"><b>Your profile needs a little more before we can optimize it</b><div style="margin-top:3px">Add a headline, a summary, and at least a few skills, then try again. <span class="subtle">(409 profile_insufficient)</span></div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:10px">Edit profile</button></div>
+        </div>
+
+        <div id="opt-done" style="display:none">
+          <div class="card" style="margin-top:18px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge badge-brand">model: claude-sonnet-4-6</span><span class="badge badge-success">status: completed</span></div>
+
+            <div class="rev-sec">
+              <h3><span class="badge badge-brand" style="padding:3px 8px">✦</span> Headline suggestions</h3>
+              <div class="rev-item"><span class="dot" style="background:var(--accent)"></span><div>Backend Engineer | Python · FastAPI · pgvector <span class="cite" title="profile_optimization.md — Lead with role + top skills.">profile-2</span></div></div>
+              <div class="rev-item"><span class="dot" style="background:var(--accent)"></span><div>Aspiring Backend Engineer building RAG-powered Python services <span class="cite" title="profile_optimization.md — Signal direction + differentiator.">profile-2</span></div></div>
+            </div>
+
+            <div class="rev-sec">
+              <h3><span class="badge badge-brand" style="padding:3px 8px">✦</span> Summary rewrite</h3>
+              <div class="rev-item"><span class="dot" style="background:var(--accent)"></span><div>"Backend engineer-in-training shipping production Python/FastAPI services, with hands-on PostgreSQL and pgvector experience from internship and RAG projects." <span class="cite" title="profile_optimization.md — Open with role, then proof.">profile-2</span></div></div>
+            </div>
+
+            <div class="rev-sec">
+              <h3><span class="badge badge-warning" style="padding:3px 8px">+</span> Missing skills</h3>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+                <span class="chip">CI/CD</span><span class="chip">Kubernetes</span><span class="chip">Redis</span>
+              </div>
+            </div>
+
+            <div class="rev-sec">
+              <h3><span class="badge badge-brand" style="padding:3px 8px">✦</span> Section suggestions</h3>
+              <div class="rev-item"><span class="dot" style="background:var(--accent)"></span><div>Add measurable outcomes to your experience bullets. <span class="cite" title="resume_writing.md — Quantify wherever possible.">resume-4</span></div></div>
+            </div>
+
+            <div class="srcs">
+              <p class="eyebrow" style="margin-bottom:6px">Sources</p>
+              <div class="src"><span class="cite">profile-2</span><div><b>profile_optimization.md</b> — <span class="muted">"Lead with your role and top skills; recruiters scan the first line."</span></div></div>
+              <div class="src"><span class="cite">resume-4</span><div><b>resume_writing.md</b> — <span class="muted">"Quantify wherever possible to demonstrate impact."</span></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobnav" aria-label="Primary mobile">
+    <button class="navlink"><span aria-hidden="true">◧</span>Home</button>
+    <button class="navlink"><span aria-hidden="true">◑</span>Profile</button>
+    <button class="navlink" aria-current="page"><span aria-hidden="true">✦</span>AI</button>
+    <button class="navlink"><span aria-hidden="true">≋</span>Jobs</button>
+    <button class="navlink"><span aria-hidden="true">⚙</span>More</button>
+  </nav>
+</div>
+
+<script>
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);try{localStorage.setItem('aurora-theme',t)}catch(e){}
+  document.getElementById('t-light').setAttribute('aria-pressed',String(t==='light'));document.getElementById('t-dark').setAttribute('aria-pressed',String(t==='dark'));}
+(function(){let s=null;try{s=localStorage.getItem('aurora-theme')}catch(e){}const os=matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';setTheme(s||os);})();
+
+const tabs=document.querySelectorAll('[role=tab]');
+function show(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
+  tabs.forEach(t=>t.setAttribute('aria-selected','false'));if(btn)btn.setAttribute('aria-selected','true');
+  document.querySelector('.topbar strong').textContent=id==='review'?'Resume Review':'Profile Optimization';window.scrollTo(0,0);}
+
+/* Resume review state machine */
+function hideAllRev(){['rev-loading','rev-429','rev-5xx','rev-done'].forEach(i=>document.getElementById(i).style.display='none');}
+function revState(s){hideAllRev();const m={loading:'rev-loading','429':'rev-429','5xx':'rev-5xx',done:'rev-done'}[s];if(m)document.getElementById(m).style.display=s==='loading'?'block':(s==='done'?'block':'flex');}
+
+/* Simulated streaming (SSE delta rendering) */
+let streamTimer=null;
+const STREAM_TEXT="event: meta → resume_id c1c2…cccc\n\nStreaming review… A strong technical foundation with clear project impact. Tightening ATS formatting and quantifying more outcomes would lift this resume into the top tier for entry-level backend roles.";
+function runReview(){
+  hideAllRev();
+  document.getElementById('rev-loading').style.display='block';
+  document.getElementById('rev-loading-label').textContent='Streaming review…';
+  const out=document.getElementById('rev-stream');out.innerHTML='';
+  let i=0;clearInterval(streamTimer);
+  streamTimer=setInterval(()=>{
+    i+=2;
+    out.innerHTML=STREAM_TEXT.slice(0,i).replace(/\n/g,'<br>')+'<span class="cursor" aria-hidden="true"></span>';
+    if(i>=STREAM_TEXT.length){clearInterval(streamTimer);
+      setTimeout(()=>{hideAllRev();document.getElementById('rev-done').style.display='block';window.scrollTo(0,document.body.scrollHeight);},500);
+    }
+  },18);
+}
+
+/* Optimization state machine */
+function optState(s){['opt-loading','opt-409','opt-done'].forEach(i=>document.getElementById(i).style.display='none');
+  const m={loading:'opt-loading','409':'opt-409',done:'opt-done'}[s];if(m)document.getElementById(m).style.display=(s==='409')?'flex':'block';}
+</script>
+</body>
+</html>

@@ -1,0 +1,341 @@
+{
+  "contract_id": "group-A",
+  "group_name": "Foundation (Types, Config, DB/pgvector, Embeddings)",
+  "stories": ["E1-S1", "E1-S2", "E1-S3", "E5-S1"],
+  "dependencies": [],
+  "verification_mode": "local",
+  "approved": true,
+  "notes": {
+    "scope": "Foundation layer only. No HTTP API, no UI, no LLM provider calls in Group A. The layers exercised are Types -> Config -> DB/Repository-substrate -> EmbeddingProvider (service). Group A produces the typed contracts, settings object, persistence substrate, and embedding capability that all later groups import.",
+    "amendment_001": "LLM provider is Groq, NOT Anthropic. Per specs/design/amendments/001-llm-provider-abstraction.md (approved), Settings MUST NOT require ANTHROPIC_API_KEY. GROQ_API_KEY is OPTIONAL/deferred in Group A (only required from Epic E6). The fail-fast required-secret set for Group A is DATABASE_URL and JWT_SECRET only. This supersedes the E1-S2 acceptance-criterion-2 wording that names ANTHROPIC_API_KEY.",
+    "entity_count_reconciliation": "data-models.md / data-models.schema.json define 11 persistence entities (User, RefreshToken, Profile, Resume, ResumeReview, ProfileOptimization, Job, JobMatchRun, JobMatch, KnowledgeChunk, AIRequestLog). Feature F001 / story E1-S1 AC1 enumerate 10 by folding JobMatchRun+JobMatch into 'JobMatch'. The contract requires Pydantic models for ALL 11 schema entities; F001 traces to the 10-name acceptance criterion and JobMatchRun is verified alongside JobMatch.",
+    "db_dsn": "Local test DSN: postgresql://app:app@localhost:5433/ai_professional_network (Docker pgvector/pgvector:pg16, PostgreSQL 16.14, pgvector 0.8.3). Backend may adjust the driver scheme (+psycopg / +asyncpg); verification accepts any psycopg/asyncpg-prefixed scheme pointing at host port 5433. The standalone DB probes below use a synchronous postgresql+psycopg engine regardless of the app's chosen driver, so psycopg (sync) must be installed as a dependency.",
+    "import_root": "backend/src/app/ (referenced below as app/).",
+    "never_exposed_columns": "data-models.md sec 4 defines exactly four never-exposed-in-DTO columns: users.password_hash, refresh_tokens.token_hash, resumes.storage_key, and all embedding vectors. DTO-safety checks below assert ALL FOUR are absent from every response DTO. PII columns (users.email, profiles.full_name, resumes.original_filename, resumes.structured_content) may appear in owner-facing DTOs but MUST NEVER appear in logs / AIRequestLog / error payloads.",
+    "evaluator_amendments": "Evaluator (final say) added 6 checks beyond the generator proposal: (1) AC-SCHEMA-07 extra-field rejection across all 11 models (additionalProperties:false parity); (2) AC-SCHEMA-08 enum out-of-set rejection per data-models.md sec 0; (3) tightened AC-SCHEMA-04 to the full four never-exposed columns incl. embedding on Profile/Resume DTOs; (4) AC-BEHAV-07 embed_batch returns N x 384; (5) AC-BEHAV-08 EmbeddingProvider is substitutable by a stub satisfying the Protocol (true swappability, not just import hygiene); (6) AC-BEHAV-09 Settings loads with ANTHROPIC_API_KEY AND GROQ_API_KEY unset (genuine fail-fast negative); plus db-dependent migrated_vector_columns_are_384 proving the migration-created columns (not just a raw smoke table) are dimension 384."
+  },
+
+  "features": [
+    { "id": "F001", "story": "E1-S1", "description": "Pydantic models exist for all BRD entities (User, RefreshToken, Profile, Resume, ResumeReview, ProfileOptimization, Job, JobMatch[+JobMatchRun], KnowledgeChunk, AIRequestLog)." },
+    { "id": "F002", "story": "E1-S1", "description": "Profile model exposes typed fields: headline, summary, skills (list[str]), education, experience, certifications, projects, completion_percentage (int 0-100, validated)." },
+    { "id": "F003", "story": "E1-S1", "description": "Response DTOs are distinct from persistence models and never expose internal fields such as password_hash, token_hash, storage_key, or raw embedding vectors." },
+    { "id": "F004", "story": "E1-S1", "description": "mypy --strict passes over the types module with zero errors." },
+    { "id": "F005", "story": "E1-S1", "description": "Structured-resume DTO matches the BRD six-key schema exactly: {contact, skills, education, experience, certifications, projects}." },
+    { "id": "F006", "story": "E1-S2", "description": "A single typed Settings object (pydantic-settings) loads all config from environment variables and validates at startup." },
+    { "id": "F007", "story": "E1-S2", "description": "Application fails fast at startup with an actionable error naming the missing variable when a required secret (DATABASE_URL, JWT_SECRET) is absent. ANTHROPIC_API_KEY is NOT required (Amendment 001); GROQ_API_KEY is optional/deferred in Group A." },
+    { "id": "F008", "story": "E1-S2", "description": "No secret or API key appears as a hardcoded literal anywhere in the source tree (grep returns zero)." },
+    { "id": "F009", "story": "E1-S2", "description": "LLM config (model id, max tokens, 60s timeout, per-user AI rate limit) and upload policy (5 MB, PDF/DOCX) are read from centralized settings, not hardcoded." },
+    { "id": "F010", "story": "E1-S3", "description": "Migrations applied from a clean database succeed (exit code 0) and enable the pgvector extension (CREATE EXTENSION IF NOT EXISTS vector)." },
+    { "id": "F011", "story": "E1-S3", "description": "A session factory is the single import point yielding scoped DB sessions for repositories." },
+    { "id": "F012", "story": "E1-S3", "description": "Vector columns on Job, Resume, and KnowledgeChunk are declared with exactly 384 dimensions." },
+    { "id": "F013", "story": "E1-S3", "description": "A health-check function runs SELECT 1 and reports healthy/unhealthy status." },
+    { "id": "F014", "story": "E1-S3", "description": "The latest migration is reversible: apply then rollback restores the prior schema without error." },
+    { "id": "F015", "story": "E5-S1", "description": "EmbeddingProvider interface defines embed_text(str) -> vector and embed_batch(list[str]) -> list[vector]." },
+    { "id": "F016", "story": "E5-S1", "description": "Local bge-small-en-v1.5 implementation produces 384-dimension float vectors." },
+    { "id": "F017", "story": "E5-S1", "description": "Embedding is deterministic: identical input yields an identical vector across calls." },
+    { "id": "F018", "story": "E5-S1", "description": "The embedding model loads once (lazy singleton) and is reused across calls in a process." },
+    { "id": "F019", "story": "E5-S1", "description": "Callers depend only on the EmbeddingProvider interface, so the provider is swappable via configuration/wiring." }
+  ],
+
+  "api_checks": {
+    "items": [],
+    "note": "Empty by design. Group A has no HTTP endpoints (Types/Config/DB/Embedding only). API checks begin in Group E (E2-S3 onward). The API base path /api/v1 and DTO-safety rules are recorded here for downstream groups but are NOT verified in Group A."
+  },
+
+  "playwright_checks": {
+    "items": [],
+    "note": "Empty by design. No frontend exists until Epic E8 (Groups F/G). No browser verification applies to Group A."
+  },
+
+  "design_checks": {
+    "items": [],
+    "note": "Empty by design. No UI/aesthetic surface in Group A; design-critic scoring is not applicable."
+  },
+
+  "architecture_checks": {
+    "files_must_exist": {
+      "E1-S1_types": [
+        "backend/src/app/types/__init__.py",
+        "backend/src/app/types/domain.py",
+        "backend/src/app/types/dto.py",
+        "backend/src/app/types/structured.py",
+        "backend/src/app/types/ai.py",
+        "backend/src/app/types/enums.py"
+      ],
+      "E1-S2_config": [
+        "backend/src/app/config/__init__.py",
+        "backend/src/app/config/settings.py",
+        "backend/src/app/config/llm_config.py",
+        "backend/.env.example"
+      ],
+      "E1-S3_db_and_migrations": [
+        "backend/src/app/db/__init__.py",
+        "backend/src/app/db/session.py",
+        "backend/src/app/db/base.py",
+        "backend/src/app/db/models.py",
+        "backend/src/app/db/health.py",
+        "backend/alembic.ini",
+        "backend/migrations/env.py"
+      ],
+      "E1-S3_migration_versions": {
+        "glob": "backend/migrations/versions/*.py",
+        "min_count": 1,
+        "note": "At least one revision must exist; the initial revision must run CREATE EXTENSION IF NOT EXISTS vector and create vector(384) columns."
+      },
+      "E5-S1_embedding": [
+        "backend/src/app/services/ai/__init__.py",
+        "backend/src/app/services/ai/embedding_provider.py"
+      ],
+      "test_files": [
+        "backend/tests/conftest.py",
+        "backend/tests/unit/test_types/",
+        "backend/tests/unit/test_services/",
+        "backend/tests/unit/test_repositories/"
+      ],
+      "test_files_note": "Each Group A module must have at least one corresponding test. Required test coverage targets: types (F001-F005), settings/llm_config (F006-F009), db session/health (F011, F013), migrations apply/rollback + pgvector + vector(384) (F010, F012, F014), embedding_provider (F015-F019). Exact test filenames are at the generator's discretion under backend/tests/unit/ and a DB-integration test module, but each listed feature must map to >=1 test case."
+    },
+
+    "schema_conformance": [
+      {
+        "id": "AC-SCHEMA-01",
+        "feature": "F001",
+        "check": "A Pydantic model class exists in app/types for every entity defined in specs/design/data-models.schema.json definitions: User, RefreshToken, Profile, Resume, ResumeReview, ProfileOptimization, Job, JobMatchRun, JobMatch, KnowledgeChunk, AIRequestLog (11 total). Each instantiates with valid sample data from data-models.md examples without error.",
+        "traces_to": "E1-S1 AC1"
+      },
+      {
+        "id": "AC-SCHEMA-02",
+        "feature": "F002",
+        "check": "Profile model field annotations: skills is list[str]; completion_percentage is int constrained 0-100 (constructing with 150 raises ValidationError); headline/summary/education/experience/certifications/projects present with correct types and max-length constraints (headline<=160, summary<=2000, full_name<=120).",
+        "traces_to": "E1-S1 AC2"
+      },
+      {
+        "id": "AC-SCHEMA-03",
+        "feature": "F005",
+        "check": "StructuredResume DTO has exactly the keys {contact, skills, education, experience, certifications, projects}; nested ContactInfo/EducationItem/ExperienceItem/CertificationItem/ProjectItem match data-models.schema.json definitions. Validates a sample structured resume and rejects unknown keys (additionalProperties:false equivalent).",
+        "traces_to": "E1-S1 AC5"
+      },
+      {
+        "id": "AC-SCHEMA-04",
+        "feature": "F003",
+        "check": "Response/persistence separation across ALL four never-exposed columns (data-models.md sec 4): serializing the user response DTO yields JSON with NO password_hash and NO password key; the refresh-token DTO (if any) exposes NO token_hash; the resume response DTO exposes NO storage_key and NO embedding; the profile response DTO exposes NO embedding; no response DTO anywhere exposes a raw 384-dim embedding vector. Assert by dumping each response DTO to JSON and confirming none of {password_hash, password, token_hash, storage_key, embedding} appear as keys.",
+        "traces_to": "E1-S1 AC3; data-models.md sec 4 never-exposed columns"
+      },
+      {
+        "id": "AC-SCHEMA-05",
+        "feature": "F012",
+        "check": "ORM models in app/db/models.py declare vector(384) columns on resumes.embedding, jobs.embedding, knowledge_chunks.embedding; the generated migration DDL declares dimension exactly 384 for each. Enum CHECK constraints match data-models.md sec 0 value sets.",
+        "traces_to": "E1-S3 AC3; data-models.md sec 0 (Embeddings = 384)"
+      },
+      {
+        "id": "AC-SCHEMA-06",
+        "feature": "F016",
+        "check": "EmbeddingProvider.embed_text returns a sequence of length exactly 384 with float elements; consistent with EMBEDDING_DIM=384 from settings and the bge-small-en-v1.5 model.",
+        "traces_to": "E5-S1 AC2"
+      },
+      {
+        "id": "AC-SCHEMA-07",
+        "feature": "F001",
+        "check": "Extra-field rejection (additionalProperties:false parity with data-models.schema.json): every Group A Pydantic model rejects an unknown/extra field at construction (Pydantic model_config extra='forbid' or equivalent). For at least User, Profile, Resume, StructuredResume, and one AI-content model, constructing with an unrecognized key raises ValidationError. Guards against silent acceptance of off-schema payloads.",
+        "traces_to": "E1-S1 AC1/AC5; data-models.schema.json additionalProperties:false on every definition"
+      },
+      {
+        "id": "AC-SCHEMA-08",
+        "feature": "F001",
+        "check": "Enum value-set conformance (data-models.md sec 0): models with enum-constrained fields reject out-of-set values. At minimum: User.theme_preference rejects a value not in {system,light,dark}; Resume.parse_status rejects a value not in {pending,parsed,failed}; Resume.mime_type rejects a value not in the two allowed MIME types; AIRequestLog.feature and .outcome reject values outside their sec-0 sets. Constructing with an out-of-set value raises ValidationError.",
+        "traces_to": "E1-S1 AC1; data-models.md sec 0 enum value sets"
+      }
+    ],
+
+    "import_boundary_checks": [
+      {
+        "id": "AC-IMPORT-01",
+        "feature": "F004",
+        "check": "app/types/* imports nothing from app/config, app/db, app/repositories, app/services, or app/api (Types is layer 1, depends on nothing internal). Verified by static import scan / grep over app/types/.",
+        "traces_to": "E1-S1 (one-way dependency foundation); folder-structure.md layering"
+      },
+      {
+        "id": "AC-IMPORT-02",
+        "feature": "F006",
+        "check": "app/config/* imports only from app/types (and stdlib/pydantic-settings); it does NOT import app/db, app/repositories, app/services, or app/api. Config is layer 2.",
+        "traces_to": "folder-structure.md layering; E1-S2"
+      },
+      {
+        "id": "AC-IMPORT-03",
+        "feature": "F019",
+        "check": "No module imports the concrete bge/sentence-transformers implementation class directly except embedding_provider.py itself and provider wiring. Other (future) callers reference only the EmbeddingProvider interface type. Grep app/services and app/repositories for sentence_transformers / concrete impl class name returns matches only inside embedding_provider.py.",
+        "traces_to": "E5-S1 AC5"
+      },
+      {
+        "id": "AC-IMPORT-04",
+        "feature": "F011",
+        "check": "app/db/session.py is the single exported session/engine factory; app/db modules do not import app/services or app/api. db/models.py imports db/base.py for the declarative base.",
+        "traces_to": "E1-S3 AC2; folder-structure.md (session.py single import point)"
+      },
+      {
+        "id": "AC-IMPORT-05",
+        "feature": "F007",
+        "check": "Negative check (Amendment 001): grep of app/config/settings.py and app/config/llm_config.py finds no required field named ANTHROPIC_API_KEY / anthropic_api_key. GROQ_API_KEY, if present, is Optional (no fail-fast when unset). backend/.env.example contains no ANTHROPIC_API_KEY line.",
+        "traces_to": "Amendment 001; E1-S2 AC2 (superseded wording)"
+      }
+    ],
+
+    "behavioral_checks": [
+      {
+        "id": "AC-BEHAV-01",
+        "feature": "F007",
+        "check": "With DATABASE_URL unset, loading Settings raises a startup error whose message names DATABASE_URL. Same for JWT_SECRET. The error is raised at load time (fail-fast), not on first use.",
+        "traces_to": "E1-S2 AC2 (as amended)"
+      },
+      {
+        "id": "AC-BEHAV-02",
+        "feature": "F009",
+        "check": "Settings exposes typed fields for: database_url, jwt_secret, jwt_access_ttl_seconds, jwt_refresh_ttl_seconds, llm_provider, groq_api_key (optional), llm_timeout_seconds (default 60), ai_rate_limit_per_hour, embedding_model (BAAI/bge-small-en-v1.5), embedding_dim (384), max_upload_mb (5), frontend_origin. Each derives from the matching env var in .env.example; an invalid-typed value (e.g. non-int MAX_UPLOAD_MB) raises a validation error at load.",
+        "traces_to": "E1-S2 AC1, AC4, AC5; root .env.example"
+      },
+      {
+        "id": "AC-BEHAV-03",
+        "feature": "F013",
+        "check": "health-check function returns a healthy status against the live DB at the test DSN; pointed at an unreachable DSN it returns unhealthy (does not raise an uncaught exception).",
+        "traces_to": "E1-S3 AC4"
+      },
+      {
+        "id": "AC-BEHAV-04",
+        "feature": "F017",
+        "check": "embed_text called twice on identical input yields element-wise identical vectors.",
+        "traces_to": "E5-S1 AC3"
+      },
+      {
+        "id": "AC-BEHAV-05",
+        "feature": "F018",
+        "check": "The underlying model is instantiated at most once per process (lazy singleton); a counter/patch on the model loader confirms a single load across repeated embed calls.",
+        "traces_to": "E5-S1 AC4"
+      },
+      {
+        "id": "AC-BEHAV-06",
+        "feature": "F015",
+        "check": "EmbeddingProvider (Protocol/ABC) declares embed_text(str) -> vector and embed_batch(list[str]) -> list[vector]; the local implementation satisfies the interface.",
+        "traces_to": "E5-S1 AC1"
+      },
+      {
+        "id": "AC-BEHAV-07",
+        "feature": "F015",
+        "check": "embed_batch behavioral shape: calling embed_batch(['a','b','c']) returns a list of length 3 where each element is a 384-dim float sequence; embed_batch([]) returns an empty list without error. Exercises the batch path, not only the declared signature.",
+        "traces_to": "E5-S1 AC1, AC2"
+      },
+      {
+        "id": "AC-BEHAV-08",
+        "feature": "F019",
+        "check": "True provider swappability: a minimal stub class implementing embed_text/embed_batch (returning fixed 384-dim vectors) satisfies the EmbeddingProvider interface (isinstance against the runtime-checkable Protocol, or registers as an ABC subclass) and can be used wherever the interface is expected. Confirms the abstraction is substitutable, not merely that imports are clean.",
+        "traces_to": "E5-S1 AC5"
+      },
+      {
+        "id": "AC-BEHAV-09",
+        "feature": "F007",
+        "check": "Negative fail-fast (Amendment 001): with DATABASE_URL and JWT_SECRET set but BOTH ANTHROPIC_API_KEY and GROQ_API_KEY unset, Settings loads successfully and does not raise. Proves ANTHROPIC_API_KEY is genuinely not required and GROQ_API_KEY is optional in Group A.",
+        "traces_to": "Amendment 001; E1-S2 AC2 (as amended)"
+      }
+    ]
+  },
+
+  "verification_commands": {
+    "working_directory": "backend/",
+    "env_setup": {
+      "DATABASE_URL": "postgresql://app:app@localhost:5433/ai_professional_network",
+      "JWT_SECRET": "test-secret-not-a-real-key",
+      "EMBEDDING_MODEL": "BAAI/bge-small-en-v1.5",
+      "EMBEDDING_DIM": "384",
+      "MAX_UPLOAD_MB": "5",
+      "FRONTEND_ORIGIN": "http://localhost:3000",
+      "LLM_PROVIDER": "groq",
+      "note": "GROQ_API_KEY and ANTHROPIC_API_KEY intentionally UNSET to prove neither is required in Group A. Backend may rewrite DATABASE_URL scheme to postgresql+psycopg or postgresql+asyncpg; host:port must remain localhost:5433."
+    },
+    "ratchet": [
+      {
+        "name": "tests_with_coverage",
+        "cmd": "uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=80",
+        "gate": "All tests pass AND coverage >= 80% (hard floor). Every feature F001-F019 must map to >=1 passing test."
+      },
+      {
+        "name": "lint",
+        "cmd": "uv run ruff check src tests",
+        "gate": "Zero ruff errors."
+      },
+      {
+        "name": "format_check",
+        "cmd": "uv run ruff format --check src tests",
+        "gate": "No formatting diffs."
+      },
+      {
+        "name": "typecheck_strict_types",
+        "cmd": "uv run mypy --strict src/app/types",
+        "gate": "Zero errors over the types module (F004)."
+      },
+      {
+        "name": "typecheck_project",
+        "cmd": "uv run mypy src/app",
+        "gate": "Zero errors over the application package (config, db, embedding included)."
+      },
+      {
+        "name": "no_hardcoded_secrets",
+        "cmd": "uv run python -c \"import re,sys,pathlib; pats=[r'sk-[A-Za-z0-9]', r'gsk_[A-Za-z0-9]', r'AKIA[0-9A-Z]{16}', r'-----BEGIN', r'(?i)(api[_-]?key|secret|password)\\\\s*=\\\\s*[\\\"\\\\\\'][^\\\"\\\\\\']{8,}']; bad=[]; [bad.append((p,m.group())) for p in pathlib.Path('src').rglob('*.py') for m in re.finditer('|'.join(pats), p.read_text(encoding='utf-8'))]; print('HARDCODED_SECRET_FOUND' if bad else 'OK', bad); sys.exit(1 if bad else 0)\"",
+        "gate": "Zero hardcoded credential literals in src (F008). Placeholder change-me values live only in .env.example, which is excluded."
+      }
+    ],
+    "db_dependent_setup": [
+      {
+        "name": "alembic_clean_apply",
+        "cmd": "uv run alembic upgrade head",
+        "gate": "Exit code 0 from a clean database; enables pgvector and creates schema (F010)."
+      },
+      {
+        "name": "pgvector_extension_present",
+        "cmd": "uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL'].replace('postgresql://','postgresql+psycopg://')); print(e.connect().execute(sa.text(\\\"SELECT extname FROM pg_extension WHERE extname='vector'\\\")).fetchone())\"",
+        "gate": "Returns ('vector',) confirming CREATE EXTENSION succeeded (F010)."
+      },
+      {
+        "name": "pgvector_smoke_384_and_distance",
+        "cmd": "uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL'].replace('postgresql://','postgresql+psycopg://')); c=e.connect(); c.execute(sa.text('CREATE EXTENSION IF NOT EXISTS vector')); c.execute(sa.text('DROP TABLE IF EXISTS _vec_smoke')); c.execute(sa.text('CREATE TABLE _vec_smoke (id int, v vector(384))')); c.execute(sa.text(\\\"INSERT INTO _vec_smoke VALUES (1, (SELECT '['||string_agg('0',',')||']' FROM generate_series(1,384))::vector)\\\")); r=c.execute(sa.text(\\\"SELECT v <-> v FROM _vec_smoke\\\")).fetchone(); c.execute(sa.text('DROP TABLE _vec_smoke')); c.commit(); print('vector(384) + <-> ok', r)\"",
+        "gate": "Creates a vector(384) column, inserts a 384-dim vector, runs the <-> (L2 distance) operator without error -> proves pgvector 384-dim + distance operators work against the live DB (F012 substrate)."
+      },
+      {
+        "name": "migrated_vector_columns_are_384",
+        "cmd": "uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL'].replace('postgresql://','postgresql+psycopg://')); c=e.connect(); q=sa.text(\\\"SELECT c.relname, a.attname, format_type(a.atttypid, a.atttypmod) FROM pg_attribute a JOIN pg_class c ON a.attrelid=c.oid JOIN pg_type t ON a.atttypid=t.oid WHERE t.typname='vector' AND a.attnum>0 AND NOT a.attisdropped AND c.relname IN ('resumes','jobs','knowledge_chunks') ORDER BY c.relname, a.attname\\\"); rows=c.execute(q).fetchall(); print(rows); bad=[r for r in rows if not str(r[2]).replace(' ','').endswith('(384)')]; want={'jobs','knowledge_chunks','resumes'}; got={r[0] for r in rows}; assert want<=got, ('missing vector columns on tables: '+str(want-got)); assert not bad, ('non-384 vector columns: '+str(bad)); print('all migrated vector columns are vector(384)')\"",
+        "gate": "After alembic upgrade head, the ACTUAL migration-created columns resumes.embedding, jobs.embedding, knowledge_chunks.embedding are each format_type vector(384). Proves F012 against the real schema, not just a throwaway smoke table."
+      },
+      {
+        "name": "alembic_reversible",
+        "cmd": "uv run alembic downgrade -1 && uv run alembic upgrade head",
+        "gate": "Downgrade of the latest migration succeeds without error and re-upgrade restores head (F014)."
+      },
+      {
+        "name": "db_health_check",
+        "cmd": "uv run python -c \"from app.db.health import check_db_health; print(check_db_health())\"",
+        "gate": "Returns a healthy status against the live DB (F013). Exact function name per implementation; evaluator confirms a SELECT 1 health probe exists."
+      }
+    ]
+  },
+
+  "coverage_target": 80,
+
+  "acceptance_mapping": {
+    "F001": { "story": "E1-S1", "acceptance_criterion": "AC1 — Pydantic models exist for every BRD entity (10 named; 11 in schema incl. JobMatchRun). Verified by AC-SCHEMA-01, AC-SCHEMA-07, AC-SCHEMA-08." },
+    "F002": { "story": "E1-S1", "acceptance_criterion": "AC2 — Profile model typed fields incl. skills list[str] and completion_percentage int 0-100. Verified by AC-SCHEMA-02." },
+    "F003": { "story": "E1-S1", "acceptance_criterion": "AC3 — Request/response DTOs separate from persistence; none of password_hash/token_hash/storage_key/embedding exposed. Verified by AC-SCHEMA-04." },
+    "F004": { "story": "E1-S1", "acceptance_criterion": "AC4 — mypy --strict passes over types module with zero errors. Verified by typecheck_strict_types + AC-IMPORT-01." },
+    "F005": { "story": "E1-S1", "acceptance_criterion": "AC5 — Structured-resume DTO matches BRD six-key schema exactly. Verified by AC-SCHEMA-03." },
+    "F006": { "story": "E1-S2", "acceptance_criterion": "AC1 — Single typed Settings object loads all config from env and validates at startup. Verified by AC-BEHAV-02 + AC-IMPORT-02." },
+    "F007": { "story": "E1-S2", "acceptance_criterion": "AC2 (as amended by 001) — Fail-fast on missing DATABASE_URL/JWT_SECRET; ANTHROPIC_API_KEY NOT required. Verified by AC-BEHAV-01, AC-BEHAV-09, AC-IMPORT-05." },
+    "F008": { "story": "E1-S2", "acceptance_criterion": "AC3 — No secret/API key as a hardcoded literal in the source tree. Verified by no_hardcoded_secrets." },
+    "F009": { "story": "E1-S2", "acceptance_criterion": "AC4 + AC5 — LLM config (model/max tokens/60s timeout/AI rate limit) and upload policy (5 MB, PDF/DOCX) read from settings. Verified by AC-BEHAV-02." },
+    "F010": { "story": "E1-S3", "acceptance_criterion": "AC1 — Migration enables pgvector and applies cleanly with exit code 0. Verified by alembic_clean_apply + pgvector_extension_present." },
+    "F011": { "story": "E1-S3", "acceptance_criterion": "AC2 — Session factory is the single import point yielding scoped sessions. Verified by AC-IMPORT-04." },
+    "F012": { "story": "E1-S3", "acceptance_criterion": "AC3 — Vector columns on Job, Resume, KnowledgeChunk declared with 384 dimensions. Verified by AC-SCHEMA-05, pgvector_smoke_384_and_distance, migrated_vector_columns_are_384." },
+    "F013": { "story": "E1-S3", "acceptance_criterion": "AC4 — Health-check runs SELECT 1 and reports healthy/unhealthy. Verified by AC-BEHAV-03 + db_health_check." },
+    "F014": { "story": "E1-S3", "acceptance_criterion": "AC5 — Latest migration reversible: apply then rollback restores prior schema. Verified by alembic_reversible." },
+    "F015": { "story": "E5-S1", "acceptance_criterion": "AC1 — EmbeddingProvider interface defines embed_text and embed_batch. Verified by AC-BEHAV-06, AC-BEHAV-07." },
+    "F016": { "story": "E5-S1", "acceptance_criterion": "AC2 — Local bge-small-en-v1.5 produces 384-dimension float vectors. Verified by AC-SCHEMA-06." },
+    "F017": { "story": "E5-S1", "acceptance_criterion": "AC3 — Deterministic: identical input yields identical vector. Verified by AC-BEHAV-04." },
+    "F018": { "story": "E5-S1", "acceptance_criterion": "AC4 — Model loads once (lazy singleton) and is reused. Verified by AC-BEHAV-05." },
+    "F019": { "story": "E5-S1", "acceptance_criterion": "AC5 — Callers depend only on the EmbeddingProvider interface; provider swappable via config. Verified by AC-IMPORT-03 + AC-BEHAV-08." }
+  }
+}

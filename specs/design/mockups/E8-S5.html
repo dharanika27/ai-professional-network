@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard · Job Matching · Job Details · Settings — AuroraAI (E8-S5)</title>
+<!--
+  E8-S5 — Dashboard hub, Job Matching (ranked fit %, matched skills, gaps),
+  Job Details, Settings (theme toggle + resume/data deletion w/ confirm modal).
+  Reuses E8-S1 Aurora tokens. Mock data snake_case per JobMatchResponse /
+  JobDetailResponse / ProfileResponse. API call labels shown throughout.
+-->
+<style>
+:root{--brand-1:#5B5BF5;--brand-2:#8B5CF6;--brand-3:#22D3EE;--aurora:linear-gradient(120deg,#5B5BF5 0%,#8B5CF6 45%,#22D3EE 100%);--aurora-soft:linear-gradient(120deg,rgba(91,91,245,.14),rgba(34,211,238,.14));--font-display:"Fraunces","Georgia",serif;--font-body:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,monospace;--r-sm:8px;--r-md:14px;--r-lg:20px;--r-xl:28px;--r-full:999px;--ease:cubic-bezier(.22,.61,.36,1);--dur:.18s;}
+[data-theme="light"]{--bg:#F7F8FC;--surface:#FFFFFF;--surface-2:#F1F2F9;--surface-3:#E9EBF6;--text:#15161D;--text-muted:#5A5E72;--text-subtle:#8A8FA3;--border:#E6E8F2;--border-strong:#D2D6E6;--ring:#5B5BF5;--accent:#5B5BF5;--accent-weak:#EEF0FE;--accent-text:#3A3AD0;--success:#16A34A;--success-weak:#E7F6ED;--warning:#B45309;--warning-weak:#FBF1E3;--danger:#DC2626;--danger-weak:#FCEAEA;--shadow-1:0 1px 2px rgba(18,19,31,.06),0 1px 3px rgba(18,19,31,.04);--shadow-2:0 10px 30px -12px rgba(35,30,90,.22);--shadow-glow:0 0 0 1px rgba(91,91,245,.18),0 12px 36px -10px rgba(91,91,245,.34);--skel:linear-gradient(90deg,#ECEEF7 25%,#F6F7FC 37%,#ECEEF7 63%);}
+[data-theme="dark"]{--bg:#0A0B12;--surface:#12131F;--surface-2:#1A1C2B;--surface-3:#22243A;--text:#ECEDF5;--text-muted:#A2A7BE;--text-subtle:#6E7390;--border:#262A3E;--border-strong:#343A55;--ring:#8B5CF6;--accent:#8B5CF6;--accent-weak:#1C1B33;--accent-text:#C4B5FD;--success:#34D399;--success-weak:#10261D;--warning:#FBBF24;--warning-weak:#2A2110;--danger:#F87171;--danger-weak:#2B1414;--shadow-1:0 1px 2px rgba(0,0,0,.4);--shadow-2:0 12px 36px -14px rgba(0,0,0,.7);--shadow-glow:0 0 0 1px rgba(139,92,246,.35),0 14px 40px -12px rgba(139,92,246,.4);--skel:linear-gradient(90deg,#1A1C2B 25%,#23263A 37%,#1A1C2B 63%);}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;transition:background var(--dur),color var(--dur)}
+h1,h2,h3{font-family:var(--font-display);line-height:1.1;letter-spacing:-.02em;margin:0;font-weight:600}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:6px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.grad-text{background:var(--aurora);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text);font-weight:600}
+.muted{color:var(--text-muted)} .subtle{color:var(--text-subtle)}
+.api{font-family:var(--font-mono);font-size:11px;color:var(--text-subtle);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;display:inline-block}
+
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--text);padding:6px 8px 18px}
+.brand .mark{width:28px;height:28px;border-radius:8px;background:var(--aurora);box-shadow:var(--shadow-glow);display:grid;place-items:center;color:#fff;font-family:var(--font-body);font-weight:800;font-size:14px}
+.navlink{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-md);color:var(--text-muted);font-size:14px;font-weight:600;cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:inherit}
+.navlink:hover{background:var(--surface-2);color:var(--text)}
+.navlink[aria-current="page"]{background:var(--accent-weak);color:var(--accent-text)}
+.sb-foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 8px;border-top:1px solid var(--border)}
+.avatar{width:34px;height:34px;border-radius:var(--r-full);background:var(--aurora);display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px}
+.topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;height:64px;padding:0 28px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(10px)}
+.spacer{flex:1}
+.toggle{display:inline-flex;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-full);padding:5px}
+.toggle button{all:unset;display:grid;place-items:center;width:30px;height:30px;border-radius:var(--r-full);cursor:pointer;color:var(--text-muted)}
+.toggle button[aria-pressed="true"]{background:var(--surface);color:var(--accent-text);box-shadow:var(--shadow-1)}
+.content{max-width:1080px;margin:0 auto;padding:28px 28px 80px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px;border-radius:var(--r-md);padding:11px 18px;border:1px solid transparent;cursor:pointer;font-family:inherit;transition:transform var(--dur),box-shadow var(--dur)}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--aurora);color:#fff;box-shadow:var(--shadow-glow)}
+.btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border-strong)}
+.btn-ghost{background:transparent;color:var(--text-muted)}
+.btn-danger{background:var(--danger-weak);color:var(--danger)} .btn-danger:hover{background:var(--danger);color:#fff}
+.btn-sm{padding:7px 13px;font-size:13px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-1);padding:22px}
+.card-hover{transition:transform var(--dur),box-shadow var(--dur);cursor:pointer} .card-hover:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:var(--r-full)}
+.badge-brand{background:var(--accent-weak);color:var(--accent-text)} .badge-success{background:var(--success-weak);color:var(--success)} .badge-warning{background:var(--warning-weak);color:var(--warning)} .badge-danger{background:var(--danger-weak);color:var(--danger)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:6px 12px;border-radius:var(--r-full);background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.chip-match{background:var(--success-weak);color:var(--success);border-color:transparent}
+.chip-gap{background:var(--warning-weak);color:var(--warning);border-color:transparent}
+.chip-skill{background:var(--accent-weak);color:var(--accent-text);border-color:transparent}
+.page{display:none}.page.active{display:block}
+
+.ring{--p:0;--sz:104px;width:var(--sz);height:var(--sz);border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--brand-2) calc(var(--p)*1%),var(--surface-2) 0);position:relative;flex:none}
+.ring::after{content:"";position:absolute;inset:8px;border-radius:50%;background:var(--surface)}
+.ring>div{position:relative;text-align:center}
+.ring b{font-family:var(--font-mono);font-weight:700;font-size:22px}
+
+/* fit meter (linear) */
+.fit{display:flex;flex-direction:column;align-items:center;gap:4px;flex:none}
+.fit .big{font-family:var(--font-mono);font-weight:700;font-size:24px}
+.meter{width:6px;height:54px;border-radius:var(--r-full);background:var(--surface-2);position:relative;overflow:hidden}
+.meter i{position:absolute;left:0;right:0;bottom:0;background:var(--aurora);border-radius:var(--r-full)}
+
+.dash-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;margin-top:18px}
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.next{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:10px}
+.next .ic{width:36px;height:36px;border-radius:var(--r-md);background:var(--accent-weak);color:var(--accent-text);display:grid;place-items:center;flex:none}
+.job-row{display:flex;gap:16px;align-items:center;padding:18px;border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:12px;background:var(--surface);transition:transform var(--dur),box-shadow var(--dur)}
+.job-row:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+.companylogo{width:46px;height:46px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;font-family:var(--font-display);font-weight:700;flex:none}
+.skel{background:var(--skel);background-size:400% 100%;animation:sh 1.3s infinite linear;border-radius:var(--r-sm)}
+@keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.spin{width:18px;height:18px;border:2px solid var(--surface-3);border-top-color:var(--accent);border-radius:50%;animation:rot .7s linear infinite;display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(8,9,16,.55);backdrop-filter:blur(4px);z-index:50;display:none;place-items:center;padding:20px}
+.overlay.open{display:grid}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-2);padding:26px;max-width:440px;width:100%}
+.switch{position:relative;width:48px;height:28px;border-radius:var(--r-full);background:var(--surface-3);border:1px solid var(--border-strong);cursor:pointer;flex:none}
+.switch[aria-checked="true"]{background:var(--aurora)}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left var(--dur)}
+.switch[aria-checked="true"]::after{left:22px}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid var(--border)}
+.seg{display:inline-flex;gap:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-full);padding:4px}
+.seg button{all:unset;font-size:13px;font-weight:600;padding:6px 13px;border-radius:var(--r-full);cursor:pointer;color:var(--text-muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--accent-text);box-shadow:var(--shadow-1)}
+
+.mobnav{display:none}
+@media(max-width:980px){.dash-grid{grid-template-columns:1fr}}
+@media(max-width:860px){.app{grid-template-columns:1fr}.sidebar{display:none}.mobnav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--surface);border-top:1px solid var(--border);padding:8px;justify-content:space-around}.mobnav .navlink{flex-direction:column;gap:2px;font-size:11px;padding:6px}.content{padding-bottom:90px}}
+@media(max-width:560px){.kpi-row{grid-template-columns:1fr}.content{padding:18px 16px 90px}.topbar{padding:0 16px}.job-row{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" aria-label="Primary">
+    <div class="brand"><span class="mark" aria-hidden="true">A</span>Aurora<span class="grad-text">AI</span></div>
+    <button class="navlink" id="nav-dash" aria-current="page" onclick="go('dash')"><span aria-hidden="true">◧</span>Dashboard</button>
+    <button class="navlink" onclick="alert('See E8-S3.html for Profile')"><span aria-hidden="true">◑</span>Profile</button>
+    <button class="navlink" onclick="alert('See E8-S4.html for AI Insights')"><span aria-hidden="true">✦</span>AI Insights</button>
+    <button class="navlink" id="nav-jobs" onclick="go('jobs')"><span aria-hidden="true">≋</span>Job Matches</button>
+    <button class="navlink" id="nav-set" onclick="go('settings')"><span aria-hidden="true">⚙</span>Settings</button>
+    <div class="sb-foot"><span class="avatar" aria-hidden="true">AR</span><div style="font-size:13px;line-height:1.3"><b>Asha Rao</b><div class="subtle" style="font-size:12px">asha.rao@example.com</div></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <strong id="page-title" style="font-family:var(--font-display);font-size:17px">Dashboard</strong>
+      <div class="spacer"></div>
+      <span class="api" id="api-label">GET /api/v1/profile</span>
+      <div class="toggle" role="group" aria-label="Theme">
+        <button id="t-light" aria-pressed="true" aria-label="Light" onclick="setTheme('light')">☀</button>
+        <button id="t-dark" aria-pressed="false" aria-label="Dark" onclick="setTheme('dark')">☾</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- ================= DASHBOARD ================= -->
+      <section class="page active" id="dash" aria-label="Dashboard">
+        <p class="eyebrow">Welcome back</p>
+        <h1 style="font-size:32px;margin:6px 0 0">Good evening, Asha 👋</h1>
+        <p class="muted" style="margin:4px 0 0">Here's where your AI-powered job search stands today.</p>
+
+        <div class="kpi-row" style="margin-top:20px">
+          <div class="card" style="display:flex;align-items:center;gap:16px">
+            <div class="ring" style="--p:80" role="img" aria-label="Profile completion 80 percent"><div><b>80%</b></div></div>
+            <div><div class="subtle" style="font-size:12px">Profile completion</div><b style="font-size:15px">Almost there</b><div class="muted" style="font-size:12px">Add certifications</div></div>
+          </div>
+          <div class="card"><div class="subtle" style="font-size:12px">Top job match</div><div style="font-size:30px;font-family:var(--font-mono);font-weight:700;color:var(--success)">82%</div><div class="muted" style="font-size:13px">Junior Backend Engineer · Nimbus Cloud</div></div>
+          <div class="card"><div class="subtle" style="font-size:12px">AI runs left this hour</div><div style="font-size:30px;font-family:var(--font-mono);font-weight:700" class="grad-text">7<span style="font-size:16px;color:var(--text-subtle)"> / 10</span></div><div class="muted" style="font-size:13px">Resets in 38 min</div></div>
+        </div>
+
+        <div class="dash-grid">
+          <div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="font-size:20px">Matched jobs</h2><button class="btn btn-ghost btn-sm" onclick="go('jobs')">View all →</button></div>
+              <p class="api" style="margin-bottom:14px">POST /api/v1/jobs/match</p>
+              <div class="job-row" style="margin-bottom:10px;cursor:pointer" onclick="go('detail')">
+                <div class="fit"><span class="big" style="color:var(--success)">82%</span><div class="meter"><i style="height:82%"></i></div></div>
+                <div style="flex:1"><b>Junior Backend Engineer</b><div class="muted" style="font-size:13px">Nimbus Cloud · Bengaluru (Hybrid)</div></div>
+                <span class="badge badge-success">Strong fit</span>
+              </div>
+              <div class="job-row" style="cursor:pointer" onclick="go('jobs')">
+                <div class="fit"><span class="big" style="color:var(--accent-text)">74%</span><div class="meter"><i style="height:74%"></i></div></div>
+                <div style="flex:1"><b>Platform Engineer (Graduate)</b><div class="muted" style="font-size:13px">Helio Systems · Remote</div></div>
+                <span class="badge badge-brand">Good fit</span>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:18px">
+              <h2 style="font-size:20px;margin-bottom:4px">Recent AI analyses</h2>
+              <p class="api" style="margin-bottom:14px">GET /api/v1/ai/resume-review/latest · GET /api/v1/ai/profile-optimization/latest</p>
+              <div class="next"><span class="ic" aria-hidden="true">✦</span><div style="flex:1"><b style="font-size:14px">Resume Review</b><div class="muted" style="font-size:13px">Score 78/100 · 2 hours ago</div></div><button class="btn btn-secondary btn-sm" onclick="alert('Opens E8-S4.html Resume Review')">Open</button></div>
+              <div class="next" style="margin-bottom:0"><span class="ic" aria-hidden="true">✦</span><div style="flex:1"><b style="font-size:14px">Profile Optimization</b><div class="muted" style="font-size:13px">3 suggestions · yesterday</div></div><button class="btn btn-secondary btn-sm" onclick="alert('Opens E8-S4.html Profile Optimization')">Open</button></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="card">
+              <h2 style="font-size:20px;margin-bottom:14px">Recommended next actions</h2>
+              <div class="next"><span class="ic" aria-hidden="true">＋</span><div style="flex:1"><b style="font-size:14px">Add certifications</b><div class="muted" style="font-size:13px">Reach 100% completion</div></div><button class="btn btn-ghost btn-sm" onclick="alert('Opens E8-S3.html Profile Edit')">Go</button></div>
+              <div class="next"><span class="ic" aria-hidden="true">✦</span><div style="flex:1"><b style="font-size:14px">Run a fresh job match</b><div class="muted" style="font-size:13px">7 AI runs left this hour</div></div><button class="btn btn-ghost btn-sm" onclick="go('jobs')">Go</button></div>
+              <div class="next" style="margin-bottom:0"><span class="ic" aria-hidden="true">⬆</span><div style="flex:1"><b style="font-size:14px">Update your resume</b><div class="muted" style="font-size:13px">Last upload 2 days ago</div></div><button class="btn btn-ghost btn-sm" onclick="alert('Opens E8-S3.html Resume Upload')">Go</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= JOB MATCHING ================= -->
+      <section class="page" id="jobs" aria-label="Job matching">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+          <div><p class="eyebrow">AI · two-stage match</p><h1 style="font-size:32px;margin:6px 0 0">Matched jobs</h1><p class="muted" style="margin:4px 0 0">Ranked by fit, with honest gaps. <span class="api">POST /api/v1/jobs/match</span></p></div>
+          <button class="btn btn-primary" id="rematch-btn" onclick="rematch()">↻ Re-run match</button>
+        </div>
+
+        <!-- loading -->
+        <div id="jobs-loading" style="display:none;margin-top:20px" aria-live="polite">
+          <div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="spin"></span><b>Matching your resume against 742 roles…</b></div>
+          <div class="card"><div class="skel" style="height:16px;width:40%;margin-bottom:10px"></div><div class="skel" style="height:11px;width:80%"></div></div>
+        </div>
+
+        <div id="jobs-list" style="margin-top:20px">
+          <div class="job-row" onclick="go('detail')" role="button" tabindex="0">
+            <div class="fit"><span class="big" style="color:var(--success)">82%</span><div class="meter"><i style="height:82%"></i></div><span class="subtle" style="font-size:11px">rank 1</span></div>
+            <div class="companylogo" aria-hidden="true">N</div>
+            <div style="flex:1;min-width:200px">
+              <b style="font-size:16px">Junior Backend Engineer</b>
+              <div class="muted" style="font-size:13px">Nimbus Cloud · Bengaluru (Hybrid) · full_time · entry</div>
+              <p class="muted" style="font-size:13px;margin:6px 0">Strong Python/FastAPI alignment with the required backend stack.</p>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <span class="chip chip-match" style="font-size:12px">✓ Python</span><span class="chip chip-match" style="font-size:12px">✓ FastAPI</span>
+                <span class="chip chip-gap" style="font-size:12px">gap · Kubernetes</span><span class="chip chip-gap" style="font-size:12px">gap · On-call</span>
+              </div>
+            </div>
+            <span class="badge badge-success">Strong fit</span>
+          </div>
+
+          <div class="job-row" onclick="go('detail')" role="button" tabindex="0">
+            <div class="fit"><span class="big" style="color:var(--accent-text)">74%</span><div class="meter"><i style="height:74%"></i></div><span class="subtle" style="font-size:11px">rank 2</span></div>
+            <div class="companylogo" aria-hidden="true">H</div>
+            <div style="flex:1;min-width:200px">
+              <b style="font-size:16px">Platform Engineer (Graduate)</b>
+              <div class="muted" style="font-size:13px">Helio Systems · Remote · full_time · entry</div>
+              <p class="muted" style="font-size:13px;margin:6px 0">Good backend foundation; infra/CI exposure would raise the fit.</p>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <span class="chip chip-match" style="font-size:12px">✓ Python</span><span class="chip chip-match" style="font-size:12px">✓ Docker</span>
+                <span class="chip chip-gap" style="font-size:12px">gap · CI/CD</span><span class="chip chip-gap" style="font-size:12px">gap · Terraform</span>
+              </div>
+            </div>
+            <span class="badge badge-brand">Good fit</span>
+          </div>
+
+          <div class="job-row" role="button" tabindex="0">
+            <div class="fit"><span class="big" style="color:var(--warning)">41%</span><div class="meter"><i style="height:41%"></i></div><span class="subtle" style="font-size:11px">rank 3</span></div>
+            <div class="companylogo" aria-hidden="true">V</div>
+            <div style="flex:1;min-width:200px">
+              <b style="font-size:16px">Data Engineer</b>
+              <div class="muted" style="font-size:13px">Vela Analytics · Pune · full_time · mid</div>
+              <p class="muted" style="font-size:13px;margin:6px 0">Some Python overlap, but limited data-pipeline and mid-level experience.</p>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <span class="chip chip-match" style="font-size:12px">✓ Python</span>
+                <span class="chip chip-gap" style="font-size:12px">gap · Spark</span><span class="chip chip-gap" style="font-size:12px">gap · Airflow</span><span class="chip chip-gap" style="font-size:12px">gap · 3+ yrs</span>
+              </div>
+            </div>
+            <span class="badge badge-warning">Honest low fit</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= JOB DETAILS ================= -->
+      <section class="page" id="detail" aria-label="Job details">
+        <button class="btn btn-ghost btn-sm" onclick="go('jobs')" style="margin-bottom:16px">← Back to matches</button>
+        <p class="api" style="margin-bottom:14px">GET /api/v1/jobs/f6f6f6f6-4444-4555-8666-777788889999</p>
+        <div class="card">
+          <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+            <div class="companylogo" style="width:64px;height:64px;font-size:24px" aria-hidden="true">N</div>
+            <div style="flex:1;min-width:220px">
+              <h1 style="font-size:28px">Junior Backend Engineer</h1>
+              <p class="muted" style="margin:4px 0 0">Nimbus Cloud · Bengaluru, India (Hybrid)</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><span class="chip">full_time</span><span class="chip">entry</span><span class="chip">source: seed</span></div>
+            </div>
+            <div style="text-align:center"><div class="ring" style="--p:82" role="img" aria-label="Fit 82 percent"><div><b style="color:var(--success)">82%</b><div class="subtle" style="font-size:10px">fit</div></div></div></div>
+          </div>
+
+          <div style="margin-top:22px;background:var(--surface-2);border-radius:var(--r-md);padding:16px">
+            <p class="eyebrow" style="margin-bottom:6px">Why you match</p>
+            <p style="margin:0">Strong Python/FastAPI alignment with the required backend stack. Your internship REST-API work maps directly to the team's day-to-day.</p>
+            <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">
+              <span class="chip chip-match">✓ Python</span><span class="chip chip-match">✓ FastAPI</span><span class="chip chip-match">✓ PostgreSQL</span>
+            </div>
+            <p class="eyebrow" style="margin:16px 0 6px">Gaps to close</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip chip-gap">Kubernetes exposure</span><span class="chip chip-gap">Production on-call experience</span></div>
+          </div>
+
+          <h2 style="font-size:20px;margin:22px 0 8px">About the role</h2>
+          <p class="muted" style="margin:0">We're hiring a junior backend engineer to build and maintain Python/FastAPI services backing our cloud platform. You'll work on REST APIs, PostgreSQL schemas, and observability, pairing with senior engineers on a modern, well-tested codebase. We value clear writing, curiosity, and a bias toward measurable impact.</p>
+
+          <h3 style="font-size:16px;margin:18px 0 8px">Required &amp; desired skills</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span class="chip chip-skill">Python</span><span class="chip chip-skill">FastAPI</span><span class="chip chip-skill">PostgreSQL</span><span class="chip chip-skill">Docker</span><span class="chip chip-skill">REST</span>
+          </div>
+
+          <div style="margin-top:22px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary">Apply on company site</button>
+            <button class="btn btn-secondary">Save role</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SETTINGS ================= -->
+      <section class="page" id="settings" aria-label="Settings">
+        <p class="eyebrow">Account</p>
+        <h1 style="font-size:32px;margin:6px 0 18px">Settings</h1>
+
+        <div class="card" style="margin-bottom:18px">
+          <h2 style="font-size:18px;margin-bottom:6px">Appearance</h2>
+          <div class="set-row" style="border-bottom:none">
+            <div><b style="font-size:14px">Theme</b><div class="muted" style="font-size:13px">Defaults to your device. <span class="subtle">theme_preference</span></div></div>
+            <div class="seg" role="group" aria-label="Theme preference">
+              <button id="s-light" aria-pressed="true" onclick="setTheme('light')">Light</button>
+              <button id="s-dark" aria-pressed="false" onclick="setTheme('dark')">Dark</button>
+              <button id="s-sys" aria-pressed="false" onclick="setSystem()">System</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:18px">
+          <h2 style="font-size:18px;margin-bottom:6px">Account</h2>
+          <div class="set-row"><div><b style="font-size:14px">Email</b><div class="muted" style="font-size:13px">asha.rao@example.com</div></div></div>
+          <div class="set-row" style="border-bottom:none"><div><b style="font-size:14px">Sign out</b><div class="muted" style="font-size:13px">End this session. <span class="api">POST /api/v1/auth/logout</span></div></div><button class="btn btn-secondary btn-sm">Sign out</button></div>
+        </div>
+
+        <div class="card" style="border-color:var(--danger);border-width:1px">
+          <h2 style="font-size:18px;margin-bottom:6px;color:var(--danger)">Privacy &amp; data</h2>
+          <div class="set-row"><div><b style="font-size:14px">Delete resume &amp; AI analyses</b><div class="muted" style="font-size:13px">Permanently removes your resume, reviews, and match runs. <span class="api">DELETE /api/v1/resume/{resume_id}</span></div></div><button class="btn btn-danger btn-sm" onclick="openModal()">Delete</button></div>
+          <div class="set-row" style="border-bottom:none"><div><b style="font-size:14px">Data processing disclosure</b><div class="muted" style="font-size:13px">Resume content is processed by an external LLM provider (Anthropic Claude).</div></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobnav" aria-label="Primary mobile">
+    <button class="navlink" aria-current="page" onclick="go('dash')"><span aria-hidden="true">◧</span>Home</button>
+    <button class="navlink" onclick="alert('See E8-S3.html')"><span aria-hidden="true">◑</span>Profile</button>
+    <button class="navlink" onclick="alert('See E8-S4.html')"><span aria-hidden="true">✦</span>AI</button>
+    <button class="navlink" onclick="go('jobs')"><span aria-hidden="true">≋</span>Jobs</button>
+    <button class="navlink" onclick="go('settings')"><span aria-hidden="true">⚙</span>More</button>
+  </nav>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="m-title">
+  <div class="modal">
+    <h2 id="m-title" style="font-size:20px;color:var(--danger)">Delete resume &amp; analyses?</h2>
+    <p class="muted" style="font-size:14px;margin:8px 0 4px">This permanently removes your uploaded resume and all associated AI analyses (resume reviews and job match runs). This cannot be undone.</p>
+    <p class="api">DELETE /api/v1/resume/c1c2c3c4-7777-4888-8999-aaaabbbbcccc</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="confirm-del" onclick="confirmDelete()">Delete permanently</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);try{localStorage.setItem('aurora-theme',t)}catch(e){}
+  document.getElementById('t-light').setAttribute('aria-pressed',String(t==='light'));document.getElementById('t-dark').setAttribute('aria-pressed',String(t==='dark'));
+  const sl=document.getElementById('s-light'),sd=document.getElementById('s-dark'),ss=document.getElementById('s-sys');
+  if(sl){sl.setAttribute('aria-pressed',String(t==='light'));sd.setAttribute('aria-pressed',String(t==='dark'));ss.setAttribute('aria-pressed','false');}}
+function setSystem(){try{localStorage.removeItem('aurora-theme')}catch(e){}const os=matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';setTheme(os);
+  document.getElementById('s-sys').setAttribute('aria-pressed','true');document.getElementById('s-light').setAttribute('aria-pressed','false');document.getElementById('s-dark').setAttribute('aria-pressed','false');}
+(function(){let s=null;try{s=localStorage.getItem('aurora-theme')}catch(e){}const os=matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';setTheme(s||os);})();
+
+const TITLES={dash:['Dashboard','GET /api/v1/profile'],jobs:['Job Matches','POST /api/v1/jobs/match'],detail:['Job Details','GET /api/v1/jobs/{job_id}'],settings:['Settings','PUT /api/v1/profile · DELETE /api/v1/resume/{id}']};
+function go(id){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
+  document.querySelectorAll('.sidebar .navlink').forEach(n=>n.removeAttribute('aria-current'));
+  const map={dash:'nav-dash',jobs:'nav-jobs',settings:'nav-set',detail:'nav-jobs'};const el=document.getElementById(map[id]);if(el)el.setAttribute('aria-current','page');
+  const tt=TITLES[id]||TITLES.dash;document.getElementById('page-title').textContent=tt[0];document.getElementById('api-label').textContent=tt[1];window.scrollTo(0,0);}
+
+function rematch(){const b=document.getElementById('rematch-btn'),list=document.getElementById('jobs-list'),load=document.getElementById('jobs-loading');
+  b.disabled=true;list.style.display='none';load.style.display='block';
+  setTimeout(()=>{load.style.display='none';list.style.display='block';b.disabled=false;},1800);}
+
+function openModal(){document.getElementById('overlay').classList.add('open');document.getElementById('confirm-del').focus();}
+function closeModal(){document.getElementById('overlay').classList.remove('open');}
+function confirmDelete(){const b=document.getElementById('confirm-del');b.disabled=true;b.innerHTML='<span class="spin"></span> Deleting…';
+  setTimeout(()=>{closeModal();b.disabled=false;b.textContent='Delete permanently';alert('Demo: 204 No Content — resume + reviews + match runs deleted.');},900);}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal();});
+</script>
+</body>
+</html>

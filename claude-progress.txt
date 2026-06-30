@@ -1,0 +1,51 @@
+=== Session 1 ===
+date: 2026-06-30T00:00:00Z
+mode: full
+pipeline_position: design APPROVED → ready for /build
+brd: specs/brd/brd.md (APPROVED)
+spec: 8 epics (E1-E8), 27 stories, 125 features (specs/features.json) (APPROVED)
+design: 18 artifacts in specs/design/ + 5 mockups (APPROVED)
+design_amendments:
+  - Refresh tokens moved to HttpOnly/Secure/SameSite=Strict cookie (Path=/api/v1/auth); access token in-memory. Applied across security-architecture, api-contracts(+OpenAPI), frontend-architecture, sequence-diagrams, design-rationale (D3), data-models.
+  - Seed jobs = curated hand-authored + AI-generated dataset across industries/levels, JobLoader-abstracted for later API swap (D5, data-models §2.7).
+dependency_groups: A→B→C→D→E→F→G (no cycles)
+groups_completed: []
+groups_remaining: [A, B, C, D, E, F, G]
+current_group: none
+sprint_contract: none (next: create + approve before /build)
+last_commit: 2bca346 (pre-scaffold)
+features_passing: 0 / 125
+coverage: 0%
+learned_rules: 0
+blocked_stories: none
+next_action: Enter /build — create sprint contracts, approve, then implement group A onward
+
+=== Session 2 ===
+date: 2026-06-30T00:00:00Z
+mode: full
+build_approach: group-by-group with checkpoints (start Group A, then pause for review)
+pipeline_position: Phase 4 done (state initialized) → blocked on DB before Group A verification
+design_amendments_pending: specs/design/amendments/001-llm-provider-abstraction.md (LLM provider = Groq, not Anthropic; defer Anthropic config)
+toolchain: uv/node/npm/ruff/mypy/git OK; docker installed (daemon DOWN — user starting Docker Desktop)
+database: Docker pgvector/pgvector:pg16 via docker-compose.yml; host port 5433 (5432 taken by local PG17); creds app/app db ai_professional_network
+ai_provider: Groq via GROQ_API_KEY behind LLMProvider abstraction (needed from Group C/E6; not Group A-B)
+env_files: docker-compose.yml + .env.example staged
+blocked_on: user to start Docker Desktop; then provision DB (docker compose up -d db) and begin Group A
+next_action: WAIT for Docker Desktop. Then: docker compose up -d db → verify pgvector → negotiate Group A sprint contract → generator team builds E1-S1/E1-S2/E1-S3 + EmbeddingProvider(E5-S1) → ratchet gates → checkpoint
+
+=== Session 3 ===
+date: 2026-06-30T00:00:00Z
+mode: full
+build_approach: group-by-group with checkpoints
+groups_completed: [A]
+groups_remaining: [B, C, D, E, F, G]
+current_group: none (A done; awaiting checkpoint approval for B)
+sprint_contract: sprint-contracts/group-A.json (approved)
+database: Docker pgvector/pgvector:pg16 healthy on host 5433; pgvector 0.8.3; vector(384) verified
+ratchet_result: PASS — 172 tests, 99.04% coverage, ruff/mypy clean, alembic up/down reversible
+features_passing: 19 / 125
+coverage: 99% (baseline ratcheted 0 -> 99)
+learned_rules: 0
+blocked_stories: none
+ai_provider: Groq (deferred to Group C/E6); ANTHROPIC not used
+next_action: CHECKPOINT — present Group A to user; on approval, negotiate Group B sprint contract (repos, KB ingest, job seed) and implement

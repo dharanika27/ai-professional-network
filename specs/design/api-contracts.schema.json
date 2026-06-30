@@ -1,0 +1,654 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AI Professional Network API",
+    "version": "1.0.0",
+    "description": "Canonical OpenAPI contract for the MVP vertical (auth, profile, resume, AI features, jobs). snake_case JSON bodies. Mirrors api-contracts.md and data-models.md."
+  },
+  "servers": [
+    { "url": "/api/v1", "description": "Versioned API base path" }
+  ],
+  "tags": [
+    { "name": "health" },
+    { "name": "auth" },
+    { "name": "profile" },
+    { "name": "resume" },
+    { "name": "ai" },
+    { "name": "jobs" }
+  ],
+  "security": [ { "bearerAuth": [] } ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Liveness + DB readiness check",
+        "security": [],
+        "operationId": "getHealth",
+        "responses": {
+          "200": { "description": "Healthy", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } } },
+          "503": { "description": "Database unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } } }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Register a new user",
+        "description": "Returns access_token in the JSON body and sets the rotating refresh token as an HttpOnly cookie via Set-Cookie. The refresh token never appears in the response body.",
+        "security": [],
+        "operationId": "register",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RegisterRequest" } } } },
+        "responses": {
+          "201": { "description": "Created", "headers": { "Set-Cookie": { "$ref": "#/components/headers/RefreshTokenSetCookie" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthSessionResponse" } } } },
+          "409": { "description": "Email already registered", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Authenticate and obtain tokens",
+        "description": "Returns access_token in the JSON body and sets the rotating refresh token as an HttpOnly cookie via Set-Cookie. The refresh token never appears in the response body.",
+        "security": [],
+        "operationId": "login",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } } },
+        "responses": {
+          "200": { "description": "Authenticated", "headers": { "Set-Cookie": { "$ref": "#/components/headers/RefreshTokenSetCookie" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthSessionResponse" } } } },
+          "401": { "description": "Invalid credentials (generic)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Rotate refresh token and issue new access token",
+        "description": "Takes NO request body. Reads the refresh token from the HttpOnly refresh_token cookie (sent automatically by the browser on the /api/v1/auth path), rotates it, returns a new access_token in the body, and sets the rotated refresh token via Set-Cookie. Browser clients must send credentials.",
+        "security": [ { "refreshCookie": [] } ],
+        "operationId": "refreshToken",
+        "responses": {
+          "200": { "description": "New access token; rotated refresh token set via Set-Cookie", "headers": { "Set-Cookie": { "$ref": "#/components/headers/RefreshTokenSetCookie" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TokenRefreshResponse" } } } },
+          "401": { "description": "Invalid/revoked/expired/missing refresh token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Revoke the refresh token and clear the cookie",
+        "description": "Takes NO request body. Reads the refresh token from the HttpOnly cookie, revokes it server-side, and clears the cookie via Set-Cookie with Max-Age=0. Requires the access token (bearer) and credentials.",
+        "operationId": "logout",
+        "responses": {
+          "204": { "description": "Revoked; refresh cookie cleared", "headers": { "Set-Cookie": { "$ref": "#/components/headers/RefreshTokenClearCookie" } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/profile": {
+      "get": {
+        "tags": ["profile"],
+        "summary": "Get current user's profile",
+        "operationId": "getProfile",
+        "responses": {
+          "200": { "description": "Profile", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProfileResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "put": {
+        "tags": ["profile"],
+        "summary": "Update current user's profile",
+        "operationId": "updateProfile",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProfileUpdateRequest" } } } },
+        "responses": {
+          "200": { "description": "Updated profile", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProfileResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/resume": {
+      "post": {
+        "tags": ["resume"],
+        "summary": "Upload and parse a resume (PDF/DOCX, <=5MB). Content is processed by an external LLM provider.",
+        "operationId": "uploadResume",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": { "file": { "type": "string", "format": "binary" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Parsed resume", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResumeResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "415": { "description": "Unsupported file type", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "422": { "description": "File too large or unreadable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "get": {
+        "tags": ["resume"],
+        "summary": "Get current user's resume",
+        "operationId": "getResume",
+        "responses": {
+          "200": { "description": "Resume", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResumeResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/resume/{resume_id}": {
+      "delete": {
+        "tags": ["resume"],
+        "summary": "Delete a resume and its associated AI analyses",
+        "operationId": "deleteResume",
+        "parameters": [ { "$ref": "#/components/parameters/ResumeIdPath" } ],
+        "responses": {
+          "204": { "description": "Deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "description": "Not the owner", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/ai/resume-review": {
+      "post": {
+        "tags": ["ai"],
+        "summary": "Generate RAG-grounded resume review (JSON or text/event-stream)",
+        "operationId": "createResumeReview",
+        "requestBody": {
+          "required": false,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResumeReviewRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Review (JSON by default; SSE stream if Accept: text/event-stream)",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ResumeReviewResponse" } },
+              "text/event-stream": { "schema": { "type": "string", "description": "SSE: meta, delta*, result events; error event on failure." } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/AIUnavailable" },
+          "504": { "$ref": "#/components/responses/AITimeout" }
+        }
+      }
+    },
+    "/ai/resume-review/latest": {
+      "get": {
+        "tags": ["ai"],
+        "summary": "Fetch the latest completed resume review",
+        "operationId": "getLatestResumeReview",
+        "responses": {
+          "200": { "description": "Latest review", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ResumeReviewResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/ai/profile-optimization": {
+      "post": {
+        "tags": ["ai"],
+        "summary": "Generate RAG-grounded profile optimization",
+        "operationId": "createProfileOptimization",
+        "responses": {
+          "200": { "description": "Optimization", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProfileOptimizationResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": { "description": "Profile too sparse to optimize", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/AIUnavailable" },
+          "504": { "$ref": "#/components/responses/AITimeout" }
+        }
+      }
+    },
+    "/ai/profile-optimization/latest": {
+      "get": {
+        "tags": ["ai"],
+        "summary": "Fetch the latest completed profile optimization",
+        "operationId": "getLatestProfileOptimization",
+        "responses": {
+          "200": { "description": "Latest optimization", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProfileOptimizationResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/jobs/match": {
+      "post": {
+        "tags": ["jobs"],
+        "summary": "AI job matching: vector top-10 then LLM re-rank",
+        "operationId": "matchJobs",
+        "responses": {
+          "200": { "description": "Ranked matches", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/JobMatchResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": { "description": "No parsed resume", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/AIUnavailable" },
+          "504": { "$ref": "#/components/responses/AITimeout" }
+        }
+      }
+    },
+    "/jobs": {
+      "get": {
+        "tags": ["jobs"],
+        "summary": "List/browse seeded jobs",
+        "operationId": "listJobs",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "minimum": 0, "default": 0 } },
+          { "name": "q", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Job list", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/JobListResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/jobs/{job_id}": {
+      "get": {
+        "tags": ["jobs"],
+        "summary": "Get full job details",
+        "operationId": "getJob",
+        "parameters": [ { "$ref": "#/components/parameters/JobIdPath" } ],
+        "responses": {
+          "200": { "description": "Job detail", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/JobDetailResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" },
+      "refreshCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refresh_token",
+        "description": "Opaque refresh token transported only as an HttpOnly; Secure; SameSite=Strict cookie scoped to Path=/api/v1/auth. Set by register/login/refresh via Set-Cookie and sent automatically by the browser; never readable by JavaScript and never in a request/response body."
+      }
+    },
+    "headers": {
+      "RefreshTokenSetCookie": {
+        "description": "Sets (or rotates) the refresh token cookie.",
+        "schema": {
+          "type": "string",
+          "example": "refresh_token=<opaque>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=2592000"
+        }
+      },
+      "RefreshTokenClearCookie": {
+        "description": "Clears the refresh token cookie on logout.",
+        "schema": {
+          "type": "string",
+          "example": "refresh_token=; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=0"
+        }
+      }
+    },
+    "parameters": {
+      "ResumeIdPath": { "name": "resume_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+      "JobIdPath": { "name": "job_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+    },
+    "responses": {
+      "Unauthorized": { "description": "Missing or invalid access token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "NotFound": { "description": "Resource not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "ValidationError": { "description": "Request validation failed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" } } } },
+      "RateLimited": {
+        "description": "Per-user AI rate limit exceeded; LLM not invoked",
+        "headers": {
+          "Retry-After": { "schema": { "type": "integer" }, "description": "Seconds until limit resets" },
+          "X-RateLimit-Limit": { "schema": { "type": "integer" } },
+          "X-RateLimit-Remaining": { "schema": { "type": "integer" } },
+          "X-RateLimit-Reset": { "schema": { "type": "integer" } }
+        },
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "AIUnavailable": { "description": "Upstream AI provider unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+      "AITimeout": { "description": "AI request exceeded the 60s timeout", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+    },
+    "schemas": {
+      "ErrorBody": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "request_id": { "type": "string", "format": "uuid", "nullable": true }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": { "error": { "$ref": "#/components/schemas/ErrorBody" } }
+      },
+      "ValidationErrorItem": {
+        "type": "object",
+        "properties": {
+          "loc": { "type": "array", "items": { "type": "string" } },
+          "msg": { "type": "string" },
+          "type": { "type": "string" }
+        }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "required": ["detail"],
+        "properties": { "detail": { "type": "array", "items": { "$ref": "#/components/schemas/ValidationErrorItem" } } }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "database", "version"],
+        "properties": {
+          "status": { "type": "string", "enum": ["healthy", "unhealthy"] },
+          "database": { "type": "string", "enum": ["up", "down"] },
+          "version": { "type": "string" },
+          "time": { "type": "string", "format": "date-time" }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8 }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "UserPublic": {
+        "type": "object",
+        "description": "Safe user DTO. Never includes password_hash.",
+        "required": ["id", "email", "theme_preference", "created_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "theme_preference": { "type": "string", "enum": ["system", "light", "dark"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthSessionResponse": {
+        "type": "object",
+        "description": "Refresh token is NOT in the body; it is set via the HttpOnly Set-Cookie response header.",
+        "required": ["user", "access_token", "token_type", "expires_in"],
+        "properties": {
+          "user": { "$ref": "#/components/schemas/UserPublic" },
+          "access_token": { "type": "string" },
+          "token_type": { "type": "string", "enum": ["bearer"] },
+          "expires_in": { "type": "integer", "description": "Access token TTL in seconds" }
+        }
+      },
+      "TokenRefreshResponse": {
+        "type": "object",
+        "description": "Refresh token is NOT in the body; the rotated token is set via the HttpOnly Set-Cookie response header.",
+        "required": ["access_token", "token_type", "expires_in"],
+        "properties": {
+          "access_token": { "type": "string" },
+          "token_type": { "type": "string", "enum": ["bearer"] },
+          "expires_in": { "type": "integer" }
+        }
+      },
+      "EducationItem": {
+        "type": "object",
+        "required": ["institution"],
+        "properties": {
+          "institution": { "type": "string" },
+          "degree": { "type": "string", "nullable": true },
+          "field": { "type": "string", "nullable": true },
+          "start_year": { "type": "integer", "nullable": true },
+          "end_year": { "type": "integer", "nullable": true },
+          "grade": { "type": "string", "nullable": true }
+        }
+      },
+      "ExperienceItem": {
+        "type": "object",
+        "required": ["company", "title", "current"],
+        "properties": {
+          "company": { "type": "string" },
+          "title": { "type": "string" },
+          "start_date": { "type": "string", "nullable": true },
+          "end_date": { "type": "string", "nullable": true },
+          "current": { "type": "boolean" },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
+      "CertificationItem": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "issuer": { "type": "string", "nullable": true },
+          "issued_date": { "type": "string", "nullable": true }
+        }
+      },
+      "ProjectItem": {
+        "type": "object",
+        "required": ["name", "technologies"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "url": { "type": "string", "format": "uri", "nullable": true },
+          "technologies": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ContactInfo": {
+        "type": "object",
+        "required": ["links"],
+        "properties": {
+          "full_name": { "type": "string", "nullable": true },
+          "email": { "type": "string", "format": "email", "nullable": true },
+          "phone": { "type": "string", "nullable": true },
+          "location": { "type": "string", "nullable": true },
+          "links": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "StructuredResume": {
+        "type": "object",
+        "required": ["contact", "skills", "education", "experience", "certifications", "projects"],
+        "properties": {
+          "contact": { "$ref": "#/components/schemas/ContactInfo" },
+          "skills": { "type": "array", "items": { "type": "string" } },
+          "education": { "type": "array", "items": { "$ref": "#/components/schemas/EducationItem" } },
+          "experience": { "type": "array", "items": { "$ref": "#/components/schemas/ExperienceItem" } },
+          "certifications": { "type": "array", "items": { "$ref": "#/components/schemas/CertificationItem" } },
+          "projects": { "type": "array", "items": { "$ref": "#/components/schemas/ProjectItem" } }
+        }
+      },
+      "ProfileResponse": {
+        "type": "object",
+        "required": ["id", "user_id", "skills", "education", "experience", "certifications", "projects", "completion_percentage", "incomplete_sections"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "full_name": { "type": "string", "nullable": true },
+          "headline": { "type": "string", "nullable": true },
+          "summary": { "type": "string", "nullable": true },
+          "skills": { "type": "array", "items": { "type": "string" } },
+          "education": { "type": "array", "items": { "$ref": "#/components/schemas/EducationItem" } },
+          "experience": { "type": "array", "items": { "$ref": "#/components/schemas/ExperienceItem" } },
+          "certifications": { "type": "array", "items": { "$ref": "#/components/schemas/CertificationItem" } },
+          "projects": { "type": "array", "items": { "$ref": "#/components/schemas/ProjectItem" } },
+          "completion_percentage": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "incomplete_sections": { "type": "array", "items": { "type": "string" } },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ProfileUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "full_name": { "type": "string", "maxLength": 120, "nullable": true },
+          "headline": { "type": "string", "maxLength": 160, "nullable": true },
+          "summary": { "type": "string", "maxLength": 2000, "nullable": true },
+          "skills": { "type": "array", "items": { "type": "string" } },
+          "education": { "type": "array", "items": { "$ref": "#/components/schemas/EducationItem" } },
+          "experience": { "type": "array", "items": { "$ref": "#/components/schemas/ExperienceItem" } },
+          "certifications": { "type": "array", "items": { "$ref": "#/components/schemas/CertificationItem" } },
+          "projects": { "type": "array", "items": { "$ref": "#/components/schemas/ProjectItem" } }
+        }
+      },
+      "ResumeResponse": {
+        "type": "object",
+        "description": "Safe resume DTO. Never includes storage_key or embedding.",
+        "required": ["id", "user_id", "original_filename", "mime_type", "size_bytes", "file_hash", "parse_status", "disclosure", "created_at"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "original_filename": { "type": "string" },
+          "mime_type": { "type": "string", "enum": ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"] },
+          "size_bytes": { "type": "integer" },
+          "file_hash": { "type": "string" },
+          "parse_status": { "type": "string", "enum": ["pending", "parsed", "failed"] },
+          "structured_content": { "allOf": [ { "$ref": "#/components/schemas/StructuredResume" } ], "nullable": true },
+          "parse_error": { "type": "string", "nullable": true },
+          "disclosure": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Citation": {
+        "type": "object",
+        "required": ["source_id", "source_file"],
+        "properties": {
+          "source_id": { "type": "string" },
+          "source_file": { "type": "string" },
+          "snippet": { "type": "string", "nullable": true }
+        }
+      },
+      "ReviewItem": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string" },
+          "source_id": { "type": "string", "nullable": true }
+        }
+      },
+      "ResumeReviewRequest": {
+        "type": "object",
+        "properties": { "resume_id": { "type": "string", "format": "uuid", "nullable": true } }
+      },
+      "ResumeReviewContent": {
+        "type": "object",
+        "required": ["overall_summary", "strengths", "weaknesses", "ats_issues", "suggestions"],
+        "properties": {
+          "overall_summary": { "type": "string" },
+          "strengths": { "type": "array", "items": { "$ref": "#/components/schemas/ReviewItem" } },
+          "weaknesses": { "type": "array", "items": { "$ref": "#/components/schemas/ReviewItem" } },
+          "ats_issues": { "type": "array", "items": { "$ref": "#/components/schemas/ReviewItem" } },
+          "suggestions": { "type": "array", "items": { "$ref": "#/components/schemas/ReviewItem" } }
+        }
+      },
+      "ResumeReviewResponse": {
+        "type": "object",
+        "required": ["id", "resume_id", "status", "sources", "cached", "request_id"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "resume_id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+          "content": { "allOf": [ { "$ref": "#/components/schemas/ResumeReviewContent" } ], "nullable": true },
+          "sources": { "type": "array", "items": { "$ref": "#/components/schemas/Citation" } },
+          "cached": { "type": "boolean" },
+          "model_id": { "type": "string", "nullable": true },
+          "request_id": { "type": "string", "format": "uuid" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ProfileOptimizationContent": {
+        "type": "object",
+        "required": ["headline_suggestions", "missing_skills", "section_suggestions"],
+        "properties": {
+          "headline_suggestions": { "type": "array", "items": { "$ref": "#/components/schemas/ReviewItem" } },
+          "summary_suggestion": { "allOf": [ { "$ref": "#/components/schemas/ReviewItem" } ], "nullable": true },
+          "missing_skills": { "type": "array", "items": { "type": "string" } },
+          "section_suggestions": { "type": "array", "items": { "$ref": "#/components/schemas/ReviewItem" } }
+        }
+      },
+      "ProfileOptimizationResponse": {
+        "type": "object",
+        "required": ["id", "status", "sources", "request_id"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+          "content": { "allOf": [ { "$ref": "#/components/schemas/ProfileOptimizationContent" } ], "nullable": true },
+          "sources": { "type": "array", "items": { "$ref": "#/components/schemas/Citation" } },
+          "model_id": { "type": "string", "nullable": true },
+          "request_id": { "type": "string", "format": "uuid" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "JobSummary": {
+        "type": "object",
+        "description": "Job DTO without description or embedding.",
+        "required": ["id", "title", "company", "location", "skills"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "company": { "type": "string" },
+          "location": { "type": "string" },
+          "employment_type": { "type": "string", "nullable": true },
+          "seniority": { "type": "string", "nullable": true },
+          "skills": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "JobDetailResponse": {
+        "type": "object",
+        "description": "Full job. Never includes embedding.",
+        "required": ["id", "title", "company", "location", "description", "skills", "source"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "company": { "type": "string" },
+          "location": { "type": "string" },
+          "employment_type": { "type": "string", "nullable": true },
+          "seniority": { "type": "string", "nullable": true },
+          "description": { "type": "string" },
+          "skills": { "type": "array", "items": { "type": "string" } },
+          "source": { "type": "string", "enum": ["seed", "api"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "JobListResponse": {
+        "type": "object",
+        "required": ["items", "total", "limit", "offset"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/JobSummary" } },
+          "total": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" }
+        }
+      },
+      "JobMatchItem": {
+        "type": "object",
+        "required": ["rank", "fit_score", "fit_explanation", "gaps", "job"],
+        "properties": {
+          "rank": { "type": "integer", "minimum": 1 },
+          "fit_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "fit_explanation": { "type": "string" },
+          "gaps": { "type": "array", "items": { "type": "string" } },
+          "job": { "$ref": "#/components/schemas/JobSummary" }
+        }
+      },
+      "JobMatchResponse": {
+        "type": "object",
+        "required": ["run_id", "resume_id", "matches", "request_id"],
+        "properties": {
+          "run_id": { "type": "string", "format": "uuid" },
+          "resume_id": { "type": "string", "format": "uuid" },
+          "model_id": { "type": "string", "nullable": true },
+          "request_id": { "type": "string", "format": "uuid" },
+          "matches": { "type": "array", "items": { "$ref": "#/components/schemas/JobMatchItem" }, "maxItems": 10 },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}
