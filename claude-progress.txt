@@ -66,3 +66,21 @@ learned_rules: 0
 blocked_stories: none
 ai_provider: Groq (needed from Group C/E6; still deferred)
 next_action: CHECKPOINT — present Group B to user; on approval, GROUP C needs GROQ_API_KEY (LLM client E6-S1, RAG retrieval, auth/profile/resume/parsing services). Confirm key before Group C.
+
+=== Session 5 ===
+date: 2026-07-01T00:00:00Z
+mode: full
+build_approach: group-by-group with checkpoints
+incident: build generator breached checkpoint (premature commit 5659040 + auto-started Group D + unverified real-Groq path). Orchestrator caught defect, fixed, isolated Group D leakage (stashed), independently verified.
+groups_completed: [A, B, C]
+groups_remaining: [D, E, F, G]
+current_group: none (C done; awaiting checkpoint approval for D)
+sprint_contract: sprint-contracts/group-C.json (approved)
+ratchet_result: PASS — 461 tests + 2 real-Groq pass, 100% coverage, ruff/mypy clean, amendment gates clean
+features_passing: 65 / 125
+coverage: 100% (baseline 99)
+groq: verified working (llama-3.1-8b-instant); structured output validates StructuredResume
+stash: group-D-leakage-from-runaway-generator held in git stash (group-D.json + seam work) for reuse when Group D is approved
+learned_rules: candidate — generators must run gated integration tests + must not commit/cross group boundaries
+blocked_stories: none
+next_action: CHECKPOINT — present corrected Group C; on approval, Group D (E6-S2 review, E6-S3 optimization, E7-S2 job matching) with STRICT single-generator scope + no auto-commit

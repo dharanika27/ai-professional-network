@@ -182,13 +182,16 @@ class LLMClient:
             AIProviderError: The provider failed after the retry.
         """
         profile = self._resolve_profile(feature)
-        messages = self._build_messages(system, user_blocks)
         started = time.monotonic()
 
         last_input_tokens: int | None = None
         last_output_tokens: int | None = None
+        # Corrective hint populated on a schema/parse failure; used to build the
+        # retry messages. Never contains raw provider text or PII.
+        corrective_hint: str | None = None
 
         for attempt in range(self._max_attempts()):
+            messages = self._build_messages(system, user_blocks, corrective_hint)
             try:
                 text, in_tok, out_tok = self._provider.complete(
                     messages=messages,
@@ -228,7 +231,7 @@ class LLMClient:
                 raise AIProviderError("AI provider call failed", request_id) from None
 
             last_input_tokens, last_output_tokens = in_tok, out_tok
-            validated = self._try_validate(text, schema)
+            validated, corrective_hint = self._try_validate_with_hint(text, schema)
             if validated is not None:
                 outcome = AIOutcome.SUCCESS if attempt == 0 else AIOutcome.RETRY_SUCCESS
                 self._log(
@@ -243,7 +246,7 @@ class LLMClient:
                     retry_count=attempt,
                 )
                 return validated
-            # invalid schema/JSON — fall through to retry or terminal error
+            # invalid schema/JSON — corrective_hint set; fall through to retry or terminal error
 
         # Exhausted attempts without a valid result.
         self._log(
@@ -379,12 +382,47 @@ class LLMClient:
         return _TaskProfile(self._config.default_model, max_tokens, 0.0)
 
     @staticmethod
-    def _build_messages(system: str, user_blocks: list[str]) -> list[dict[str, str]]:
-        """Assemble the OpenAI-style message list from system + user blocks."""
-        return [
+    def _build_messages(
+        system: str,
+        user_blocks: list[str],
+        corrective_hint: str | None = None,
+    ) -> list[dict[str, str]]:
+        """Assemble the OpenAI-style message list from system + user blocks.
+
+        On a corrective retry, ``corrective_hint`` is a SHORT, PII-free description
+        of the previous validation failure. It is appended as an assistant/user
+        exchange so the model can see what went wrong and correct its structure.
+        The hint is generated internally and never contains raw provider text, PII,
+        or resume content.
+
+        Args:
+            system: System prompt.
+            user_blocks: Already-delimited user content blocks.
+            corrective_hint: Optional short error description for retry correction.
+
+        Returns:
+            OpenAI-style message list.
+        """
+        messages: list[dict[str, str]] = [
             {"role": "system", "content": system},
             {"role": "user", "content": "\n\n".join(user_blocks)},
         ]
+        if corrective_hint is not None:
+            # Simulate the model's (invalid) prior response as a placeholder so the
+            # correction turn is coherent even though we don't echo raw provider text.
+            messages.append({"role": "assistant", "content": "{}"})
+            messages.append(
+                {
+                    "role": "user",
+                    "content": (
+                        f"Your previous response did not match the required JSON schema. "
+                        f"Error: {corrective_hint}. "
+                        "Please output ONLY a valid JSON object that strictly conforms "
+                        "to the schema given in the system prompt."
+                    ),
+                }
+            )
+        return messages
 
     @staticmethod
     def _try_validate(text: str, schema: type[T]) -> T | None:
@@ -393,14 +431,42 @@ class LLMClient:
         Returns the validated instance, or ``None`` if the text is not valid JSON
         or does not satisfy the schema. Raw text is never surfaced to the caller.
         """
+        result, _ = LLMClient._try_validate_with_hint(text, schema)
+        return result
+
+    @staticmethod
+    def _try_validate_with_hint(text: str, schema: type[T]) -> tuple[T | None, str | None]:
+        """Parse ``text`` as JSON and validate against ``schema``.
+
+        Returns a 2-tuple of (validated_instance_or_None, corrective_hint_or_None).
+        The corrective hint is a SHORT, PII-free description of the parse/schema
+        failure, suitable for inclusion in a retry message. Raw provider text is
+        never included in the hint.
+
+        Returns:
+            ``(instance, None)`` on success.
+            ``(None, hint)`` on failure, where ``hint`` describes the error type.
+        """
         try:
             payload = json.loads(text)
         except (json.JSONDecodeError, ValueError):
-            return None
+            return None, "response was not valid JSON"
         try:
-            return schema.model_validate(payload)
-        except ValidationError:
-            return None
+            return schema.model_validate(payload), None
+        except ValidationError as exc:
+            # Surface field-level error locations without any PII values.
+            # ValidationError.errors() returns dicts with 'loc', 'type', 'msg' —
+            # we include only 'loc' (field path) and 'type' (error type code).
+            locations = [
+                f"{'.'.join(str(p) for p in e['loc'])} ({e['type']})"
+                for e in exc.errors()[:3]  # at most 3 locations to keep hint short
+            ]
+            hint = (
+                "schema validation failed: " + "; ".join(locations)
+                if locations
+                else "schema validation failed"
+            )
+            return None, hint
 
     def _log(
         self,
@@ -440,6 +506,12 @@ class LLMClient:
             finally:
                 session.close()
         except Exception:  # noqa: BLE001 — logging must never break the AI call
+            # In production this indicates a real DB issue and is a genuine warning.
+            # In integration tests that supply a stub session without flush() the
+            # ai_log_repository.log_request call raises AttributeError here, which
+            # is caught and logged as a warning. The AI call still succeeds. To
+            # suppress the warning in tests, supply a session that implements add(),
+            # flush(), commit(), and close() (see _FlushingSession in unit tests).
             logger.warning(
                 "ai_request_log write failed",
                 extra={"request_id": str(request_id), "outcome": str(outcome)},

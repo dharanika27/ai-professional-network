@@ -640,8 +640,8 @@
         "Assert the stored hash is an Argon2 hash and not the plaintext password",
         "Register again with the same email and assert a typed error"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -656,8 +656,8 @@
         "Login with wrong password and assert a generic auth error",
         "Login with an unknown email and assert the same generic error (no existence leak)"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -672,8 +672,8 @@
         "Attempt to reuse the old refresh token and assert rejection",
         "Attempt refresh with an expired token and assert rejection"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -688,8 +688,8 @@
         "Assert the payload contains the user id and an exp claim",
         "Assert verification fails with a wrong secret"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -703,8 +703,8 @@
         "Call register with a 5-character password",
         "Assert a validation error is raised and no user is created"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -718,8 +718,8 @@
         "Call get_profile for a user",
         "Assert the returned DTO includes completion_percentage"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -734,8 +734,8 @@
         "Assert a typed validation error is raised",
         "Call with valid data and assert success"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -749,8 +749,8 @@
         "Update a profile with skills ['Python', ' Python ', 'python ']",
         "Re-fetch and assert duplicates differing only by whitespace are collapsed"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -764,8 +764,8 @@
         "Call the service for a partially complete profile",
         "Assert it returns a list naming the unpopulated sections"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -779,8 +779,8 @@
         "Attempt to edit another user's profile id",
         "Assert an authorization error is raised"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -795,8 +795,8 @@
         "Submit a .txt or 6 MB file and assert an actionable rejection",
         "Submit a file whose extension and MIME mismatch and assert rejection"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -811,8 +811,8 @@
         "Submit a corrupt file and assert rejection",
         "Assert no LLM call is made for these inputs"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -827,8 +827,8 @@
         "Assert raw text is extracted locally",
         "Assert the structured output validates against the six-key schema"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -842,8 +842,8 @@
         "Stub the LLM to return invalid JSON once then valid JSON; assert success after one retry",
         "Stub the LLM to return invalid JSON twice; assert a safe error with no internal detail"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -857,8 +857,8 @@
         "Parse a resume fixture containing adversarial instructions (e.g. 'ignore previous instructions')",
         "Assert the structuring task is unchanged and the injected instruction is not obeyed"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -872,8 +872,8 @@
         "Parse a resume and capture emitted logs",
         "Assert logs contain request id and metadata only, with no resume text or PII"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -887,8 +887,8 @@
         "Call retrieve with a query and k=3",
         "Assert 3 chunks are returned ordered by descending similarity"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -902,8 +902,8 @@
         "Call retrieve and inspect the assembled context",
         "Assert each included chunk carries its source reference"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -917,8 +917,8 @@
         "Query against an empty or unrelated KB",
         "Assert a valid empty context is returned rather than an error"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -932,8 +932,8 @@
         "Inspect the retrieve service for a configurable, bounded default k",
         "Grep the service and assert no LLM client call is present"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -947,8 +947,8 @@
         "Call complete_structured with a schema and a stubbed valid response",
         "Assert a typed object matching the schema is returned"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -962,8 +962,8 @@
         "Stub one invalid response then a valid one; assert success after a single retry",
         "Stub two failures; assert a safe error containing no provider/internal detail"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -977,8 +977,8 @@
         "Invoke the client and capture logs",
         "Assert logs include a request id and exclude prompt content and PII"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -992,8 +992,8 @@
         "Stub a response that exceeds the timeout",
         "Assert the client aborts at ~60s and returns a graceful timeout error"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -1007,8 +1007,8 @@
         "Inspect the client and assert model/token settings are read from config, not hardcoded",
         "Invoke the streaming completion mode and assert incremental chunks are yielded"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-07-01",
       "failure_reason": null,
       "failure_layer": null
     },

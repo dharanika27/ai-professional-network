@@ -675,3 +675,205 @@ class TestAiLogRepository:
         assert result.latency_ms is None
         assert result.input_tokens is None
         assert result.output_tokens is None
+
+
+# ---------------------------------------------------------------------------
+# Corrective retry — _build_messages with hint and _try_validate_with_hint
+# ---------------------------------------------------------------------------
+
+
+class TestCorrectiveRetry:
+    """Tests for the corrective retry path introduced to fix the real-Groq failure.
+
+    On a schema/parse failure the client must:
+    1. Build messages WITH a corrective turn appended (so the model can fix structure).
+    2. Succeed on the second attempt if the model returns valid JSON on retry.
+    3. Never include PII / raw provider text in the corrective turn or exception.
+    """
+
+    def test_invalid_then_valid_succeeds_on_retry(
+        self, captured_logs: list[_LogRow], session_factory: object
+    ) -> None:
+        """Provider returns invalid JSON on attempt 0, valid on attempt 1."""
+        provider = _FakeProvider(complete_returns=[("not-json", 5, 5), (VALID_RESUME_JSON, 7, 8)])
+        client = _make_client(provider, session_factory)
+
+        result = client.complete_structured(
+            feature=AIFeature.RESUME_STRUCTURING,
+            system="sys",
+            user_blocks=["resume"],
+            schema=StructuredResume,
+            request_id=uuid.uuid4(),
+        )
+
+        assert isinstance(result, StructuredResume)
+        assert len(provider.complete_calls) == 2
+        # Retry attempt messages must contain a corrective user turn (4 messages).
+        retry_msgs = provider.complete_calls[1]["messages"]
+        assert len(retry_msgs) == 4  # system, user, assistant placeholder, corrective user
+        assert retry_msgs[3]["role"] == "user"
+        assert "not match the required JSON schema" in retry_msgs[3]["content"]
+        # No raw provider text in the corrective message.
+        assert "not-json" not in retry_msgs[3]["content"]
+        # Log outcome is retry_success.
+        assert captured_logs[0].kwargs["outcome"] is AIOutcome.RETRY_SUCCESS
+
+    def test_schema_mismatch_then_valid_succeeds_on_retry(
+        self, captured_logs: list[_LogRow], session_factory: object
+    ) -> None:
+        """Provider returns structurally wrong JSON on attempt 0, valid on attempt 1."""
+        bad_shape = '{"skills": ["x"], "education": []}'  # missing required 'contact'
+        provider = _FakeProvider(complete_returns=[(bad_shape, 2, 2), (VALID_RESUME_JSON, 5, 6)])
+        client = _make_client(provider, session_factory)
+
+        result = client.complete_structured(
+            feature=AIFeature.RESUME_STRUCTURING,
+            system="sys",
+            user_blocks=["resume"],
+            schema=StructuredResume,
+            request_id=uuid.uuid4(),
+        )
+
+        assert isinstance(result, StructuredResume)
+        assert len(provider.complete_calls) == 2
+        retry_msgs = provider.complete_calls[1]["messages"]
+        assert len(retry_msgs) == 4
+        # The corrective hint mentions schema validation failure and the bad field loc.
+        corrective_content = retry_msgs[3]["content"]
+        assert "schema validation failed" in corrective_content
+        assert captured_logs[0].kwargs["outcome"] is AIOutcome.RETRY_SUCCESS
+
+    def test_first_attempt_messages_have_no_corrective_turn(
+        self, captured_logs: list[_LogRow], session_factory: object
+    ) -> None:
+        """First attempt must send only 2 messages (system + user)."""
+        provider = _FakeProvider(complete_returns=[(VALID_RESUME_JSON, 3, 4)])
+        client = _make_client(provider, session_factory)
+
+        client.complete_structured(
+            feature=AIFeature.RESUME_STRUCTURING,
+            system="sys",
+            user_blocks=["resume"],
+            schema=StructuredResume,
+            request_id=uuid.uuid4(),
+        )
+
+        first_msgs = provider.complete_calls[0]["messages"]
+        assert len(first_msgs) == 2
+        assert first_msgs[0]["role"] == "system"
+        assert first_msgs[1]["role"] == "user"
+
+    def test_corrective_hint_not_json_is_pii_free(self) -> None:
+        """_try_validate_with_hint with bad JSON returns a PII-free hint."""
+        from app.services.ai.llm_client import LLMClient
+
+        _, hint = LLMClient._try_validate_with_hint("definitely not json {{{", StructuredResume)
+        assert hint is not None
+        assert "PII" not in hint
+        assert "valid JSON" in hint
+        # The raw text is never included.
+        assert "definitely not json" not in hint
+
+    def test_corrective_hint_schema_error_includes_field_locations(self) -> None:
+        """_try_validate_with_hint with bad schema returns hint with field locs."""
+        from app.services.ai.llm_client import LLMClient
+
+        bad = '{"skills": ["x"]}'  # missing required 'contact'
+        _, hint = LLMClient._try_validate_with_hint(bad, StructuredResume)
+        assert hint is not None
+        assert "contact" in hint  # field location surfaced
+
+    def test_corrective_hint_success_returns_none_hint(self) -> None:
+        """_try_validate_with_hint with valid JSON returns (instance, None)."""
+        from app.services.ai.llm_client import LLMClient
+
+        result, hint = LLMClient._try_validate_with_hint(VALID_RESUME_JSON, StructuredResume)
+        assert isinstance(result, StructuredResume)
+        assert hint is None
+
+    def test_corrective_turn_no_pii_from_system_or_user_blocks(
+        self, captured_logs: list[_LogRow], session_factory: object
+    ) -> None:
+        """The corrective user turn must not contain system or user-block content."""
+        provider = _FakeProvider(complete_returns=[("bad", 1, 1), (VALID_RESUME_JSON, 2, 2)])
+        client = _make_client(provider, session_factory)
+
+        client.complete_structured(
+            feature=AIFeature.RESUME_STRUCTURING,
+            system="secret-sys-content",
+            user_blocks=["secret-resume-text@pii.example.com"],
+            schema=StructuredResume,
+            request_id=uuid.uuid4(),
+        )
+
+        retry_msgs = provider.complete_calls[1]["messages"]
+        corrective = retry_msgs[3]["content"]
+        assert "secret-sys-content" not in corrective
+        assert "secret-resume-text@pii.example.com" not in corrective
+
+
+# ---------------------------------------------------------------------------
+# Schema injection — RESUME_STRUCTURING_SYSTEM contains the JSON Schema
+# ---------------------------------------------------------------------------
+
+
+class TestSchemaInjection:
+    """Tests that the resume structuring system prompt embeds the actual JSON Schema.
+
+    AC-BEHAV-C10 injection-containment must remain intact. The schema content
+    is injected into the system prompt (not user blocks), so the model receives
+    the authoritative schema before any untrusted data.
+    """
+
+    def test_resume_structuring_system_contains_json_schema(self) -> None:
+        """RESUME_STRUCTURING_SYSTEM must embed the StructuredResume JSON Schema."""
+        from app.services.ai.prompts.resume_structuring import RESUME_STRUCTURING_SYSTEM
+        from app.types.structured import StructuredResume
+
+        # Top-level required field names must appear in the system prompt.
+        schema = StructuredResume.model_json_schema()
+        for field_name in schema.get("properties", {}):
+            assert field_name in RESUME_STRUCTURING_SYSTEM, (
+                f"System prompt missing schema field: {field_name}"
+            )
+
+    def test_resume_structuring_system_contains_schema_keyword(self) -> None:
+        """System prompt must reference 'JSON Schema' so the model knows the format."""
+        from app.services.ai.prompts.resume_structuring import RESUME_STRUCTURING_SYSTEM
+
+        assert (
+            "JSON Schema" in RESUME_STRUCTURING_SYSTEM
+            or "json schema" in RESUME_STRUCTURING_SYSTEM.lower()
+        )
+
+    def test_schema_injected_in_system_not_user_block(self) -> None:
+        """The structurer must pass the schema in the system prompt, not user blocks."""
+        from app.services.parsing.structurer import structure_resume
+        from app.types.structured import StructuredResume
+
+        _valid_resume = StructuredResume(
+            contact={"full_name": "Test", "email": "t@example.com"},  # type: ignore[arg-type]
+        )
+
+        class _Capturing:
+            def __init__(self) -> None:
+                self.calls: list[dict[str, object]] = []
+
+            def complete_structured(self, **kwargs: object) -> StructuredResume:
+                self.calls.append(kwargs)
+                return _valid_resume
+
+        capturing = _Capturing()
+        structure_resume("some resume", capturing, uuid.uuid4())  # type: ignore[arg-type]
+
+        call = capturing.calls[0]
+        system: str = call["system"]  # type: ignore[assignment]
+        user_blocks: list[str] = call["user_blocks"]  # type: ignore[assignment]
+
+        # Schema field names must appear in system, not user blocks.
+        assert "contact" in system
+        assert "skills" in system
+        assert "education" in system
+        # User block contains only the fenced resume text.
+        for block in user_blocks:
+            assert block.startswith("<resume_text>")

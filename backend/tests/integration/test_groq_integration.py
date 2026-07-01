@@ -26,22 +26,25 @@ _MINIMAL_RESUME = (
     "Projects: OpenMetrics — telemetry library (Python)."
 )
 
-_SYSTEM = (
-    "You extract a resume into strict JSON with exactly these keys: "
-    "contact (object with full_name,email,phone,location,links), skills (array of strings), "
-    "education (array), experience (array), certifications (array), projects (array). "
-    "Return ONLY the JSON object."
-)
-
 
 @pytest.mark.groq_integration
 @pytest.mark.skipif(not GROQ_API_KEY, reason="GROQ_API_KEY not set")
 def test_groq_structured_resume_output() -> None:
-    """Real Groq call: JSON output validates as StructuredResume via LLMClient."""
+    """Real Groq call: JSON output validates as StructuredResume via LLMClient.
+
+    Uses the production RESUME_STRUCTURING_SYSTEM prompt (which embeds the full
+    Pydantic JSON Schema) and build_resume_structuring_prompt (which safely fences
+    the untrusted resume text). This exercises the complete production path so the
+    model receives the exact schema it must emit.
+    """
     from app.config.llm_config import LLMConfig
     from app.repositories import ai_log_repository
     from app.services.ai.groq_provider import GroqProvider
     from app.services.ai.llm_client import LLMClient
+    from app.services.ai.prompts.resume_structuring import (
+        RESUME_STRUCTURING_SYSTEM,
+        build_resume_structuring_prompt,
+    )
     from app.types.enums import AIFeature
     from app.types.structured import StructuredResume
 
@@ -57,7 +60,14 @@ def test_groq_structured_resume_output() -> None:
     )
 
     class _NullSession:
+        """Minimal session stub for the LLMClient log write.
+
+        The log write will fail (no flush()), triggering the non-fatal warning
+        path in LLMClient._log. That is expected and acceptable in this test.
+        """
+
         def commit(self) -> None: ...
+
         def close(self) -> None: ...
 
     provider = GroqProvider(api_key=GROQ_API_KEY)
@@ -70,8 +80,8 @@ def test_groq_structured_resume_output() -> None:
 
     result = client.complete_structured(
         feature=AIFeature.RESUME_STRUCTURING,
-        system=_SYSTEM,
-        user_blocks=[_MINIMAL_RESUME],
+        system=RESUME_STRUCTURING_SYSTEM,
+        user_blocks=[build_resume_structuring_prompt(_MINIMAL_RESUME)],
         schema=StructuredResume,
         request_id=uuid.uuid4(),
     )

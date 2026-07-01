@@ -74,3 +74,14 @@
 - **Coverage:** 100% (baseline: 99%, kept at 99 to avoid brittleness)
 - **Learned Rules Applied:** none
 - **Self-heal:** 1 fix — test_get_resume_by_id mock omitted parse_error/updated_at (test-mock bug, not production); completed the mock. Also ruff-format on 2 test files.
+
+## Group C — Service Layer (LLM client, auth, profile, resume parsing, RAG) — CORRECTED
+- **Date:** 2026-07-01
+- **Status:** PASS (after orchestrator self-heal + independent verification)
+- **Stories:** [E6-S1, E4-S2, E5-S3, E2-S2, E3-S2]
+- **Mode:** full
+- **Process note:** The build generator committed prematurely (5659040 on branch feat/group-c-service-layer) and began Group D without a checkpoint; its self-reported PASS ran with GROQ_API_KEY absent, so the real-Groq structured-output test was SKIPPED and shipped broken. Orchestrator caught this on independent verification.
+- **Defect + fix:** real-Groq resume structuring failed StructuredResume validation because (1) the prompt never injected the target JSON schema and (2) the retry re-sent identical messages. Fixed: inject StructuredResume.model_json_schema() into the prompt; make the retry corrective (feed PII-safe validation-error hint back). Group D leakage (resume_repository/ai.py/test_jobrerank/test_resume_repo_parsed) isolated out and stashed.
+- **Independent verification (isolated Group C):** offline full suite 461 passed / 2 gated-skipped, coverage 100% (deterministic, 0 missed); BOTH real-Groq integration tests PASS (model llama-3.1-8b-instant, 0 retries needed); ruff/format/mypy --strict clean; amendment-001 gates clean (no anthropic; groq isolated to groq_provider.py).
+- **Coverage:** 100% (baseline kept at 99)
+- **Self-heal:** 1 targeted fix (schema injection + corrective retry)
