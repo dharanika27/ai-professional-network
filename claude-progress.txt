@@ -49,3 +49,20 @@ learned_rules: 0
 blocked_stories: none
 ai_provider: Groq (deferred to Group C/E6); ANTHROPIC not used
 next_action: CHECKPOINT — present Group A to user; on approval, negotiate Group B sprint contract (repos, KB ingest, job seed) and implement
+
+=== Session 4 ===
+date: 2026-06-30T00:00:00Z
+mode: full
+build_approach: group-by-group with checkpoints
+resume_note: Group B was interrupted mid-build; implementation present on disk uncommitted; resumed, verified, completed. No duplicate commit (no prior Group B commit existed).
+groups_completed: [A, B]
+groups_remaining: [C, D, E, F, G]
+current_group: none (B done; awaiting checkpoint approval for C)
+sprint_contract: sprint-contracts/group-B.json (approved)
+ratchet_result: PASS — 335 tests, 100% coverage, ruff/mypy clean; idempotent KB ingest + job seed; vector top-k verified via integration tests
+features_passing: 40 / 125
+coverage: 100% (baseline kept at 99)
+learned_rules: 0
+blocked_stories: none
+ai_provider: Groq (needed from Group C/E6; still deferred)
+next_action: CHECKPOINT — present Group B to user; on approval, GROUP C needs GROQ_API_KEY (LLM client E6-S1, RAG retrieval, auth/profile/resume/parsing services). Confirm key before Group C.

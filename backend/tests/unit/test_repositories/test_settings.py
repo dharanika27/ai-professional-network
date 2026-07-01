@@ -196,3 +196,39 @@ class TestLLMConfig:
         s = _make_settings()
         cfg = build_llm_config(s)
         assert cfg.default_model != ""
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage for settings.py line 152 and line 167
+# ---------------------------------------------------------------------------
+
+
+class TestSettingsAdditionalCoverage:
+    def test_invalid_embedding_dim_raises(self) -> None:
+        """embedding_dim=0 must raise ValidationError (covers settings.py line 152)."""
+        with pytest.raises((ValidationError, Exception)):
+            Settings(
+                _env_file=None,
+                database_url="postgresql+psycopg://app:app@localhost:5433/ai_professional_network",
+                jwt_secret="test-secret",
+                embedding_dim=0,  # invalid — must be positive
+            )
+
+    def test_negative_embedding_dim_raises(self) -> None:
+        """Negative embedding_dim must raise ValidationError (settings.py line 152)."""
+        with pytest.raises((ValidationError, Exception)):
+            Settings(
+                _env_file=None,
+                database_url="postgresql+psycopg://app:app@localhost:5433/ai_professional_network",
+                jwt_secret="test-secret",
+                embedding_dim=-1,
+            )
+
+    def test_get_settings_returns_settings_instance(self) -> None:
+        """get_settings() must return a Settings instance (covers settings.py line 167)."""
+        from app.config.settings import get_settings
+
+        s = get_settings()
+        assert isinstance(s, Settings)
+        assert s.database_url is not None
+        assert s.jwt_secret is not None

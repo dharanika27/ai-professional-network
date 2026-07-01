@@ -43,7 +43,7 @@ packages = ["src/app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 addopts = [
     "-v",
     "--tb=short",
@@ -54,6 +54,8 @@ env = [
     "EMBEDDING_MODEL=BAAI/bge-small-en-v1.5",
     "EMBEDDING_DIM=384",
     "MAX_UPLOAD_MB=5",
+    "RESUME_MAX_BYTES=5242880",
+    "STORAGE_DIR=./.local_resume_store",
     "FRONTEND_ORIGIN=http://localhost:3000",
     "LLM_PROVIDER=groq",
 ]
@@ -92,6 +94,7 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
+mypy_path = ["src", "."]
 
 [[tool.mypy.overrides]]
 module = "app.types.*"

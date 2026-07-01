@@ -1,0 +1,428 @@
+{
+  "contract_id": "group-B",
+  "group_name": "Repository Substrate (Auth/Profile/Resume repos + secure storage + KB ingestion + Job seed; pgvector retrieval)",
+  "stories": ["E2-S1", "E3-S1", "E4-S1", "E5-S2", "E7-S1"],
+  "dependencies": ["group-A"],
+  "verification_mode": "local",
+  "approved": true,
+  "notes": {
+    "scope": "Layer-3 (repository substrate) only: app/repositories/*, app/storage/*, the KB-ingestion and job-seed service/loader/script modules, the KB markdown corpus, and the job seed fixtures. Builds DIRECTLY ON the committed Group A foundation (types, config, db/session, db/models with vector(384), the Alembic migration, and the bge-small EmbeddingProvider). Group B introduces NO new entities, fields, endpoints, or vector dimension; it implements data-access and idempotent data-loading over the Group-A substrate. No HTTP API, no UI, no LLM provider calls in Group B (auth/profile/resume/ai/jobs services and routers are Groups C/D/E).",
+    "build_on_group_a": "Group A is DONE and committed (Session 3: 172 tests, 99.04% coverage, ruff/mypy clean, alembic up/down reversible, pgvector 0.8.3 with vector(384) verified on host 5433). Group B MUST import and reuse: app/types/* (domain models, enums, structured/AI DTOs), app/config/settings.py (DATABASE_URL, RESUME_MAX_BYTES=5_242_880, STORAGE_DIR, EMBEDDING_DIM=384, mime allow-list), app/db/session.py (single session factory — repositories accept an injected session and NEVER open their own), app/db/models.py + the Alembic migration (vector(384) columns + HNSW indexes already created), and app/services/ai/embedding_provider.py (lazy bge-small singleton, 384-dim). Group B MUST NOT redefine any of these. Re-declaring a Settings field, a vector column, or a second session factory is a defect.",
+    "transaction_boundary": "Per backend-architecture.md §3.1 / §8.2: ONE session per request/unit-of-work, owned by the caller (the get_session dependency in later groups, or an explicit session in scripts/tests). Repositories accept the injected Session and perform data access ONLY; they NEVER call session.commit()/rollback()/close() themselves and NEVER construct their own engine/sessionmaker. The commit/rollback boundary stays in the service/request scope. This is enforced both by a STATIC grep gate (no_commit_rollback_in_repos) and by the no-session-factory grep gate. Atomicity-critical flows touched here: refresh rotation (revoke old + insert new + set rotated_to) and resume delete cascade (DB row + stored file) are written so a single enclosing transaction makes them all-or-nothing; the storage file removal is sequenced with the DB delete so they stay consistent.",
+    "secure_file_handling": "E4-S1 / security-architecture.md §3.3, §4: resume bytes NEVER enter the DB. A StorageBackend protocol (save/read/delete) abstracts persistence; LocalStorage writes under STORAGE_DIR which MUST be outside any web-served/static path. storage_key is opaque and SERVER-GENERATED (not derived verbatim from user input); original_filename is sanitized (path components stripped, <=255 chars) so a crafted filename cannot cause path traversal outside STORAGE_DIR. storage_key is one of the four never-exposed-in-DTO columns (data-models.md §4) and is never returned by any DTO. Repository validates mime_type against the two allowed MIME types and size_bytes <= 5_242_880 BEFORE persisting (DB CHECK backstops it); rejection of an oversize or disallowed-MIME file is verified behaviorally (AC-BEHAV-B20) and stores nothing.",
+    "idempotency": "E5-S2 AC4 (KB ingestion) and E7-S1 (job seed) MUST be safely re-runnable. KnowledgeChunk idempotency is keyed on content_hash = sha256(normalized chunk text) with a UNIQUE(content_hash) constraint + pre-check: re-ingesting unchanged kb/*.md inserts ZERO new rows. Job seed idempotency is keyed on a stable id (jobs.external_ref, UNIQUE-when-present, e.g. seed-000123): re-running seed_jobs over the same fixture inserts no duplicate jobs. Both loaders are abstracted behind an interface (KB markdown source; JobLoader) so the source can be swapped (real jobs API) without changing retrieval/repository code. Idempotency is verified by REAL double-run DB checks (kb_ingest_idempotent, jobs_seed_idempotent_and_count) that compare row counts before and after a second run.",
+    "vector_search_invariant": "All similarity queries run in the REPOSITORY layer over the Group-A vector(384) columns using cosine distance against the HNSW indexes (knowledge_chunks_embedding_hnsw, jobs_embedding_hnsw). The query embedding is produced by the EmbeddingProvider and passed DOWN into the repository (knowledge_repository.top_k(qv, k), job_repository.retrieve_top_jobs(qv, k=10)); the repository performs the search only and never embeds or calls an LLM. Cosine = vector_cosine_ops, consistent across all three vector tables so resume/job/KB vectors are comparable. Real top-k cosine queries (KB top-5, jobs top-10) are run against live ingested/seeded rows after alembic upgrade head.",
+    "embedding_at_seed_time": "KB chunk embeddings and job-description embeddings are produced at ingest/seed time by the LOCAL bge-small EmbeddingProvider (no live LLM, no network embeddings API). Job descriptions are STATIC committed fixtures (hand-authored + AI-generated, captured at authoring time) — there is no live LLM call during seeding. This keeps Group B free of any external-provider dependency.",
+    "coverage_ratchet": "Group A established overall project coverage at 99% (measured 99.04%). The ratchet requires overall coverage to NOT regress: this contract sets coverage_target=99 and --cov-fail-under=99 (overriding the pyproject baseline fail_under=80, which remains the absolute floor). New repository/storage/ingestion/seed modules must be comprehensively unit- AND integration-tested so the project stays >= 99%.",
+    "entity_count_reconciliation": "Group B persists/exercises: User, RefreshToken (E2-S1); Profile (E3-S1); Resume + ResumeReview-cascade (E4-S1); KnowledgeChunk (E5-S2); Job (E7-S1). JobMatchRun/JobMatch, ResumeReview content writes, ProfileOptimization, and AIRequestLog rows are WRITTEN by their owning services in Groups C/D; E4-S1 only requires that delete_resume cascades to ResumeReview rows (FK ON DELETE CASCADE per data-models.md §2.5/§5), which is verified here.",
+    "db_dsn": "Live test DSN (Group B): postgresql+psycopg://app:app@localhost:5433/ai_professional_network (Docker pgvector/pgvector:pg16; sync psycopg, same as Group A; verified healthy in Session 3). DB-dependent repository, ingestion, seed, and REAL top-k vector similarity queries over seeded/ingested rows are verified against this instance. The migration is applied (alembic upgrade head) before DB-dependent checks run.",
+    "import_root": "backend/src/app/ (referenced below as app/). Working directory for all verification commands is backend/.",
+    "mypy_scope": "mypy --strict is required to pass over the NEW Group-B repository/storage modules (app/repositories, app/storage). The whole-package mypy src/app gate from Group A continues to hold.",
+    "no_api_ui_layers": "api_checks, playwright_checks, and design_checks are empty BY DESIGN: Group B has no HTTP endpoints, no frontend, and no UI/aesthetic surface. Every Group B story carries layer: Repository. HTTP integration begins in Group E; the frontend begins in Epic E8 (Groups F/G)."
+  },
+
+  "features": [
+    { "id": "F020", "story": "E2-S1", "description": "user_repository.create_user(email, password_hash) persists a User with a server-generated id and raises a typed unique-constraint error on duplicate email." },
+    { "id": "F021", "story": "E2-S1", "description": "user_repository.get_user_by_email is case-insensitive (email stored lower-cased) and returns None for unknown emails." },
+    { "id": "F022", "story": "E2-S1", "description": "refresh_token_repository stores a token (sha256 token_hash) with expires_at and revoke_refresh_token marks revoked=true so it cannot be reused." },
+    { "id": "F023", "story": "E2-S1", "description": "is_refresh_token_valid returns True only for active tokens (revoked=false AND expires_at>now()) and False for revoked or expired tokens." },
+    { "id": "F024", "story": "E3-S1", "description": "profile_repository.get_profile_by_user_id returns the user's single Profile or None; exactly one profile exists per user (no duplicate on repeated access)." },
+    { "id": "F025", "story": "E3-S1", "description": "update_profile(user_id, data) atomically persists headline, summary, skills, education, experience, certifications, and projects." },
+    { "id": "F026", "story": "E3-S1", "description": "completion_percentage is recomputed deterministically on every update as an int 0-100 over the 7 weighted sections; fully populated = 100, empty = 0." },
+    { "id": "F027", "story": "E3-S1", "description": "Updating one user's profile never mutates another user's profile (per-user isolation)." },
+    { "id": "F028", "story": "E4-S1", "description": "A StorageBackend protocol (save/read/delete) abstracts file persistence; LocalStorage is the swappable MVP backend and callers depend on the interface, not the concrete class." },
+    { "id": "F029", "story": "E4-S1", "description": "save_resume stores file bytes via the storage backend and persists metadata (user_id, original_filename, mime_type, size_bytes, sha256 file_hash, opaque storage_key) returning a resume id." },
+    { "id": "F030", "story": "E4-S1", "description": "delete_resume(resume_id, user_id) removes the stored file and the metadata row and cascades to associated ResumeReview records." },
+    { "id": "F031", "story": "E4-S1", "description": "Stored resume files live under STORAGE_DIR, a non-web-served/non-static path; storage_key is opaque, server-generated, and never web-served." },
+    { "id": "F032", "story": "E4-S1", "description": "Retrieving a resume by (user_id, file_hash) returns the existing record, enabling cache hits for unchanged files." },
+    { "id": "F033", "story": "E5-S2", "description": "KB ingestion reads curated kb/*.md, splits into bounded chunks with per-chunk source attribution (source_file, category, chunk_index), and persists KnowledgeChunk rows." },
+    { "id": "F034", "story": "E5-S2", "description": "Each persisted KnowledgeChunk stores a 384-dimension embedding produced by the EmbeddingProvider." },
+    { "id": "F035", "story": "E5-S2", "description": "knowledge_repository top-k pgvector cosine query returns the nearest KnowledgeChunks for a query embedding, ordered by similarity." },
+    { "id": "F036", "story": "E5-S2", "description": "Re-running ingestion is idempotent (keyed on content_hash, UNIQUE): unchanged source files create zero duplicate chunks." },
+    { "id": "F037", "story": "E7-S1", "description": "A seed routine loads between 500 and 1000 realistic jobs (title, company, description, location, skills) into the jobs table behind a JobLoader interface." },
+    { "id": "F038", "story": "E7-S1", "description": "Each seeded job stores a 384-dimension embedding of its description produced by the EmbeddingProvider." },
+    { "id": "F039", "story": "E7-S1", "description": "job_repository.retrieve_top_jobs(query_embedding, k=10) returns the 10 nearest jobs by pgvector cosine similarity, ordered by score; get_job_by_id returns the full record or None." },
+    { "id": "F040", "story": "E7-S1", "description": "The job source is abstracted behind a JobLoader interface (source='seed' now, 'api' later) and seeding is idempotent on the stable external_ref, so a real jobs API can replace the seed without changing retrieval code." }
+  ],
+
+  "api_checks": {
+    "items": [],
+    "note": "Empty by design. Group B has no HTTP endpoints (repository/storage/ingestion/seed substrate only); every story carries layer: Repository. API checks begin in Group E (E2-S3 onward, F081+); the auth/profile/resume/ai/jobs routers consume these repositories there."
+  },
+
+  "playwright_checks": {
+    "items": [],
+    "note": "Empty by design. No frontend exists until Epic E8 (Groups F/G, F103+). No browser verification applies to Group B."
+  },
+
+  "design_checks": {
+    "items": [],
+    "note": "Empty by design. No UI/aesthetic surface in Group B; design-critic scoring is not applicable. No story in this group carries layer: frontend."
+  },
+
+  "architecture_checks": {
+    "files_must_exist": {
+      "E2-S1_auth_repos": [
+        "backend/src/app/repositories/__init__.py",
+        "backend/src/app/repositories/user_repository.py",
+        "backend/src/app/repositories/refresh_token_repository.py"
+      ],
+      "E3-S1_profile_repo": [
+        "backend/src/app/repositories/profile_repository.py"
+      ],
+      "E4-S1_resume_repo_and_storage": [
+        "backend/src/app/repositories/resume_repository.py",
+        "backend/src/app/storage/__init__.py",
+        "backend/src/app/storage/base.py",
+        "backend/src/app/storage/local_storage.py"
+      ],
+      "E5-S2_kb_ingestion": [
+        "backend/src/app/services/ai/kb_ingestion.py",
+        "backend/src/app/repositories/knowledge_repository.py",
+        "backend/scripts/ingest_kb.py"
+      ],
+      "E5-S2_kb_corpus": {
+        "glob": "backend/kb/*.md",
+        "min_count": 5,
+        "note": "Curated markdown KB per rag-pipeline.md §1: ats_best_practices.md, resume_writing.md, profile_optimization.md, interview_prep.md, career_guidance.md. Each file's category derives from a filename->category map in {ats,resume,profile,interview,career}."
+      },
+      "E7-S1_job_seed": [
+        "backend/src/app/repositories/job_repository.py",
+        "backend/seeds/loaders/job_loader.py",
+        "backend/seeds/jobs/jobs_seed.json",
+        "backend/scripts/seed_jobs.py"
+      ],
+      "test_files": [
+        "backend/tests/unit/test_repositories/",
+        "backend/tests/integration/"
+      ],
+      "test_files_note": "Each Group B module must have at least one corresponding test. Repository, storage, ingestion, and seed tests live under tests/unit/test_repositories and tests/integration (DB-dependent). Required mapping: user/refresh repos (F020-F023), profile repo + completion (F024-F027), resume repo + storage (F028-F032), KB ingestion + knowledge repo (F033-F036), job seed + job repo (F037-F040). Each listed feature must map to >=1 test case; vector-search and idempotency features require at least one DB-dependent integration test against localhost:5433. Exact filenames are at the generator's discretion."
+    },
+
+    "schema_conformance": [
+      {
+        "id": "AC-SCHEMA-B01",
+        "feature": "F029",
+        "check": "save_resume persists exactly the resume metadata columns from data-models.md §2.4 (user_id, original_filename, mime_type, size_bytes, file_hash, storage_key, parse_status default 'pending') and returns a UUID id. No file BYTES are written to any DB column (bytes go to the storage backend only). mime_type is one of the two allowed MIME types; size_bytes <= 5_242_880.",
+        "traces_to": "E4-S1 AC2; data-models.md §2.4"
+      },
+      {
+        "id": "AC-SCHEMA-B02",
+        "feature": "F034",
+        "check": "Each persisted KnowledgeChunk has an embedding of length exactly 384 (vector(384)) and the four citation/attribution columns populated: source_file, category (in {ats,resume,profile,interview,career}), chunk_index (int), content_hash (sha256 hex). content_hash is UNIQUE.",
+        "traces_to": "E5-S2 AC1, AC2; data-models.md §2.10; rag-pipeline.md §2"
+      },
+      {
+        "id": "AC-SCHEMA-B03",
+        "feature": "F038",
+        "check": "Each seeded Job row has an embedding of length exactly 384 (vector(384)) and required fields title, company, description, location, skills (list[str]) populated; source in {seed,api}; external_ref UNIQUE-when-present.",
+        "traces_to": "E7-S1 AC1, AC2; data-models.md §2.7"
+      },
+      {
+        "id": "AC-SCHEMA-B04",
+        "feature": "F026",
+        "check": "completion_percentage persists as a SMALLINT 0-100 (CHECK) over the 7 weighted sections (headline, summary, skills, education, experience, certifications, projects) per the deterministic algorithm in data-models.md §2.3; recomputed on every update_profile, not stored stale.",
+        "traces_to": "E3-S1 AC3, AC4; data-models.md §2.3"
+      },
+      {
+        "id": "AC-SCHEMA-B05",
+        "feature": "F022",
+        "check": "refresh_tokens rows store token_hash (sha256 hex, UNIQUE), expires_at (TIMESTAMPTZ), revoked (default false), and the optional self-referential rotated_to; the raw token is never persisted. Matches data-models.md §2.2.",
+        "traces_to": "E2-S1 AC3; data-models.md §2.2"
+      }
+    ],
+
+    "import_boundary_checks": [
+      {
+        "id": "AC-IMPORT-B01",
+        "feature": "F020",
+        "check": "Repository import boundary (Layer 3): no module under app/repositories imports app/services or app/api (no business/LLM/HTTP logic). Verified by static import scan / grep over app/repositories/. Repositories import only app/types, app/config, app/db, app/storage, and SQLAlchemy/pgvector.",
+        "traces_to": "E2-S1 AC5; backend-architecture.md §1.2"
+      },
+      {
+        "id": "AC-IMPORT-B02",
+        "feature": "F028",
+        "check": "Storage import boundary: app/storage/* imports only app/types, app/config, and stdlib; it does NOT import app/repositories, app/services, or app/api. Callers (resume_repository / future services) reference the StorageBackend protocol type, not LocalStorage directly — grep finds the concrete LocalStorage class referenced only inside local_storage.py and provider wiring.",
+        "traces_to": "E4-S1 AC1; backend-architecture.md §1.2, §2.3"
+      },
+      {
+        "id": "AC-IMPORT-B03",
+        "feature": "F040",
+        "check": "Job source swappability: job_repository (retrieval) does NOT import the concrete seed JobLoader; the loader is referenced only by the seed script/wiring. retrieve_top_jobs / get_job_by_id depend on the jobs table and the JobLoader interface type, not the seed implementation, so a real jobs API loader can replace the seed without retrieval-code edits.",
+        "traces_to": "E7-S1 AC5; rag-pipeline.md §8.1"
+      },
+      {
+        "id": "AC-IMPORT-B04",
+        "feature": "F035",
+        "check": "Embedding/LLM boundary in repos: knowledge_repository and job_repository do NOT import the EmbeddingProvider concrete impl, sentence_transformers, or any Claude/Groq/LLM client. The query embedding is passed in as an argument; the repository performs the pgvector search only. Grep over app/repositories finds no embedding-model or LLM-client import.",
+        "traces_to": "E5-S2 AC3, E7-S1 AC3; backend-architecture.md §8.3"
+      },
+      {
+        "id": "AC-IMPORT-B05",
+        "feature": "F022",
+        "check": "Single session source: no repository constructs its own engine/sessionmaker or imports a second session factory; repositories accept an injected Session parameter. Group A's app/db/session.py remains the only session/engine factory. Grep over app/repositories finds no create_engine / sessionmaker construction.",
+        "traces_to": "E2-S1 AC5; backend-architecture.md §3.1, §8.2"
+      },
+      {
+        "id": "AC-IMPORT-B06",
+        "feature": "F022",
+        "check": "Transaction-boundary ownership: no module under app/repositories calls session.commit(), session.rollback(), or session.close(). The commit/rollback boundary is owned by the caller (get_session dependency in later groups, or the explicit script/test session), never by a repository. Verified by static grep gate no_commit_rollback_in_repos.",
+        "traces_to": "E2-S1 AC5; backend-architecture.md §3.1, §8.2"
+      }
+    ],
+
+    "behavioral_checks": [
+      {
+        "id": "AC-BEHAV-B01",
+        "feature": "F020",
+        "check": "create_user returns a User with a non-null generated UUID id for a fresh email; calling create_user a second time with the same email (any casing) raises a typed unique-constraint error (not a raw IntegrityError leaking to callers).",
+        "traces_to": "E2-S1 AC1"
+      },
+      {
+        "id": "AC-BEHAV-B02",
+        "feature": "F021",
+        "check": "Create a user with a Mixed-Case email; get_user_by_email with a different case returns the same user (case-insensitive, email stored lower-cased). get_user_by_email for an unknown email returns None.",
+        "traces_to": "E2-S1 AC2"
+      },
+      {
+        "id": "AC-BEHAV-B03",
+        "feature": "F022",
+        "check": "store_refresh_token persists a token with expires_at; revoke_refresh_token sets revoked=true so a subsequent is_refresh_token_valid for that token returns False (cannot be reused).",
+        "traces_to": "E2-S1 AC3"
+      },
+      {
+        "id": "AC-BEHAV-B04",
+        "feature": "F023",
+        "check": "is_refresh_token_valid returns False for an already-expired token (expires_at in the past) and False for a revoked token; it returns True only for a token with revoked=false AND expires_at>now(). Unknown token -> False.",
+        "traces_to": "E2-S1 AC4"
+      },
+      {
+        "id": "AC-BEHAV-B05",
+        "feature": "F024",
+        "check": "After a user exists, get_profile_by_user_id returns exactly one Profile (created on first access/registration); a second retrieval does NOT create a duplicate (UNIQUE(user_id) holds; profile count for that user stays 1).",
+        "traces_to": "E3-S1 AC1"
+      },
+      {
+        "id": "AC-BEHAV-B06",
+        "feature": "F025",
+        "check": "update_profile with headline, summary, skills, education, experience, certifications, and projects persists all sections atomically; re-fetching the profile returns every updated section matching the input (JSONB sub-documents preserved).",
+        "traces_to": "E3-S1 AC2"
+      },
+      {
+        "id": "AC-BEHAV-B07",
+        "feature": "F026",
+        "check": "Updating a profile to fully populated yields completion_percentage == 100; updating to all-empty yields 0; repeating an identical update yields the identical percentage each time (deterministic recompute on every update).",
+        "traces_to": "E3-S1 AC3, AC4; data-models.md §2.3"
+      },
+      {
+        "id": "AC-BEHAV-B08",
+        "feature": "F027",
+        "check": "Create profiles for user A and user B; update_profile for A; re-fetch B and assert B's profile is byte-for-byte unchanged (per-user isolation; the update is scoped by user_id).",
+        "traces_to": "E3-S1 AC5"
+      },
+      {
+        "id": "AC-BEHAV-B09",
+        "feature": "F028",
+        "check": "A minimal stub implementing the StorageBackend protocol (save/read/delete returning fixed values) satisfies the interface and can be substituted wherever StorageBackend is expected (true swappability of the local-volume backend), confirming the abstraction is substitutable, not merely import-clean.",
+        "traces_to": "E4-S1 AC1"
+      },
+      {
+        "id": "AC-BEHAV-B10",
+        "feature": "F029",
+        "check": "save_resume with sample bytes + metadata returns a resume id, persists the sha256 file_hash, and the bytes read back via the storage backend (storage.read(storage_key)) equal the input bytes.",
+        "traces_to": "E4-S1 AC2"
+      },
+      {
+        "id": "AC-BEHAV-B11",
+        "feature": "F030",
+        "check": "Save a resume and create an associated ResumeReview row; delete_resume(resume_id, user_id) removes the stored file (storage.read raises/returns missing afterward), the resume metadata row, AND the ResumeReview row (FK ON DELETE CASCADE). All three are gone after delete.",
+        "traces_to": "E4-S1 AC3; data-models.md §2.5, §5"
+      },
+      {
+        "id": "AC-BEHAV-B12",
+        "feature": "F031",
+        "check": "After save_resume the stored file path resolves under STORAGE_DIR and is outside any web-served/static directory; a crafted original_filename containing path-traversal sequences (e.g. ../../etc/passwd) does NOT escape STORAGE_DIR (filename sanitized, storage_key server-generated). storage_key never appears in any returned DTO.",
+        "traces_to": "E4-S1 AC4; security-architecture.md §3.3, §4; data-models.md §4"
+      },
+      {
+        "id": "AC-BEHAV-B13",
+        "feature": "F032",
+        "check": "Save a resume and note its (user_id, file_hash); a get-by-hash lookup returns the existing record (cache hit). A different user's identical hash does not collide (uniqueness is per (user_id, file_hash)).",
+        "traces_to": "E4-S1 AC5; data-models.md §2.4"
+      },
+      {
+        "id": "AC-BEHAV-B14",
+        "feature": "F033",
+        "check": "Ingestion over sample kb/*.md creates KnowledgeChunk rows where each chunk carries its source_file, derived category, and chunk_index; chunk text respects the bounded size (<= ~1000 tokens) and breaks at heading/paragraph boundaries (no mid-sentence-only chunks).",
+        "traces_to": "E5-S2 AC1, AC5; rag-pipeline.md §3.1"
+      },
+      {
+        "id": "AC-BEHAV-B15",
+        "feature": "F036",
+        "check": "Idempotent ingestion: run ingestion, record the KnowledgeChunk count; run ingestion AGAIN over unchanged files and assert the count is identical (zero duplicates; UNIQUE(content_hash) + pre-check). Confirms a duplicate-ingest is a no-op.",
+        "traces_to": "E5-S2 AC4; rag-pipeline.md §3.4"
+      },
+      {
+        "id": "AC-BEHAV-B16",
+        "feature": "F035",
+        "check": "After ingesting chunks, knowledge_repository top-k(query_embedding, k) returns k chunks ordered by descending cosine similarity (nearest first), each retaining its source reference (source_file + stable source_id = '{category}-{chunk_index}'). Exercised against the live DB over real ingested rows.",
+        "traces_to": "E5-S2 AC3, AC5; rag-pipeline.md §5.2, §5.3"
+      },
+      {
+        "id": "AC-BEHAV-B17",
+        "feature": "F037",
+        "check": "The seed routine loads between 500 and 1000 jobs into the jobs table; every row has title, company, description, location, and skills populated (skills is a non-empty list[str] where applicable). Job count is within [500,1000].",
+        "traces_to": "E7-S1 AC1"
+      },
+      {
+        "id": "AC-BEHAV-B18",
+        "feature": "F040",
+        "check": "Idempotent seeding: run seed_jobs, record job count; re-run over the same fixture and assert the count is unchanged (no duplicates; keyed on stable external_ref UNIQUE). Confirms re-seed does not duplicate.",
+        "traces_to": "E7-S1 AC1, AC5"
+      },
+      {
+        "id": "AC-BEHAV-B19",
+        "feature": "F039",
+        "check": "retrieve_top_jobs(query_embedding, k=10) returns exactly 10 jobs ordered by descending similarity over the seeded rows (live DB, real vector query). get_job_by_id(existing) returns the full Job; get_job_by_id(random unknown UUID) returns None.",
+        "traces_to": "E7-S1 AC3, AC4"
+      },
+      {
+        "id": "AC-BEHAV-B20",
+        "feature": "F029",
+        "check": "Secure-upload validation: save_resume REJECTS a disallowed mime_type (e.g. text/plain) and REJECTS an oversize file (size_bytes > 5_242_880) with a typed error BEFORE persisting — no metadata row is created and no bytes are written to storage on rejection. Only application/pdf and the DOCX MIME within the 5 MB limit are accepted.",
+        "traces_to": "E4-S1 AC2; security-architecture.md §4; data-models.md §2.4"
+      }
+    ]
+  },
+
+  "verification_commands": {
+    "working_directory": "backend/",
+    "env_setup": {
+      "DATABASE_URL": "postgresql+psycopg://app:app@localhost:5433/ai_professional_network",
+      "JWT_SECRET": "test-secret-not-a-real-key",
+      "EMBEDDING_MODEL": "BAAI/bge-small-en-v1.5",
+      "EMBEDDING_DIM": "384",
+      "MAX_UPLOAD_MB": "5",
+      "RESUME_MAX_BYTES": "5242880",
+      "STORAGE_DIR": "./.local_resume_store",
+      "FRONTEND_ORIGIN": "http://localhost:3000",
+      "LLM_PROVIDER": "groq",
+      "note": "GROQ_API_KEY and ANTHROPIC_API_KEY intentionally UNSET — Group B makes no LLM calls (embeddings are local bge-small, job descriptions are static fixtures). LLM_PROVIDER=groq matches amendment 001 (LLM provider = Groq behind the LLMProvider abstraction; only consumed from Group C/E6). STORAGE_DIR points at a non-web-served local dir for resume bytes. DATABASE_URL host:port must remain localhost:5433 (Docker pgvector pg16, sync psycopg). The migration is applied before DB-dependent checks. If any Group-A Settings field name differs from the keys above, the generator must use the Group-A names — these MUST NOT introduce new config fields."
+    },
+    "ratchet": [
+      {
+        "name": "tests_with_coverage",
+        "cmd": "uv run pytest --cov=src --cov-report=term-missing --cov-fail-under=99",
+        "gate": "All tests (unit + integration) pass AND overall project coverage >= 99% (ratchet baseline established by Group A at 99.04%; the pyproject 80% floor remains in force). Every feature F020-F040 must map to >=1 passing test, and vector-search + idempotency features must have >=1 DB-dependent integration test against localhost:5433."
+      },
+      {
+        "name": "lint",
+        "cmd": "uv run ruff check src tests",
+        "gate": "Zero ruff errors."
+      },
+      {
+        "name": "format_check",
+        "cmd": "uv run ruff format --check src tests",
+        "gate": "No formatting diffs."
+      },
+      {
+        "name": "typecheck_strict_new_repo_modules",
+        "cmd": "uv run mypy --strict src/app/repositories src/app/storage",
+        "gate": "Zero errors over the new Group-B repository and storage modules (strong type safety on new repo modules)."
+      },
+      {
+        "name": "typecheck_project",
+        "cmd": "uv run mypy src/app",
+        "gate": "Zero errors over the whole application package (Group A's gate continues to hold with the new modules added)."
+      },
+      {
+        "name": "repository_import_boundary",
+        "cmd": "uv run python -c \"import re,sys,pathlib; bad=[]; [bad.append((str(p),m)) for p in pathlib.Path('src/app/repositories').rglob('*.py') for m in re.findall(r'^\\s*(?:from|import)\\s+(?:app\\.)?(services|api)\\b', p.read_text(encoding='utf-8'), re.M)]; sg=[str(p) for p in pathlib.Path('src/app/storage').rglob('*.py') if re.search(r'^\\s*(?:from|import)\\s+(?:app\\.)?(?:repositories|services|api)\\b', p.read_text(encoding='utf-8'), re.M)]; print('REPO_BOUNDARY_VIOLATION' if (bad or sg) else 'OK', bad, sg); sys.exit(1 if (bad or sg) else 0)\"",
+        "gate": "No module in app/repositories imports app/services or app/api; no module in app/storage imports app/repositories, app/services, or app/api (AC-IMPORT-B01, AC-IMPORT-B02)."
+      },
+      {
+        "name": "no_embedding_or_llm_import_in_repos",
+        "cmd": "uv run python -c \"import re,sys,pathlib; pats=r'(sentence_transformers|embedding_provider|claude_client|anthropic|groq)'; bad=[str(p) for p in pathlib.Path('src/app/repositories').rglob('*.py') if re.search(pats, p.read_text(encoding='utf-8'))]; print('EMBED_LLM_IN_REPO' if bad else 'OK', bad); sys.exit(1 if bad else 0)\"",
+        "gate": "Repositories never import the embedding model or any LLM client (Claude/Groq/sentence-transformers); query embeddings are passed in as arguments (AC-IMPORT-B04)."
+      },
+      {
+        "name": "no_session_factory_in_repos",
+        "cmd": "uv run python -c \"import re,sys,pathlib; pats=r'(create_engine|sessionmaker|scoped_session)'; bad=[str(p) for p in pathlib.Path('src/app/repositories').rglob('*.py') if re.search(pats, p.read_text(encoding='utf-8'))]; print('SESSION_IN_REPO' if bad else 'OK', bad); sys.exit(1 if bad else 0)\"",
+        "gate": "No repository constructs its own engine/session; the Group-A session factory is the single source and a Session is injected (AC-IMPORT-B05)."
+      },
+      {
+        "name": "no_commit_rollback_in_repos",
+        "cmd": "uv run python -c \"import re,sys,pathlib; pats=r'(?:^|[^.\\w])(?:session|self\\.session|db|self\\._?session)\\s*\\.\\s*(commit|rollback|close)\\s*\\(|\\.session\\.(commit|rollback|close)\\s*\\('; bad=[str(p) for p in pathlib.Path('src/app/repositories').rglob('*.py') if re.search(r'\\.(commit|rollback|close)\\s*\\(', p.read_text(encoding='utf-8'))]; print('TXN_BOUNDARY_VIOLATION' if bad else 'OK', bad); sys.exit(1 if bad else 0)\"",
+        "gate": "No module in app/repositories calls .commit(), .rollback(), or .close() on a session; the transaction boundary is owned by the caller, not the repository (AC-IMPORT-B06; backend-architecture.md §3.1, §8.2)."
+      }
+    ],
+    "db_dependent_setup": [
+      {
+        "name": "alembic_apply_head",
+        "cmd": "uv run alembic upgrade head",
+        "gate": "Exit code 0; the Group-A schema (incl. pgvector + vector(384) columns + HNSW indexes) is present before repository/ingestion/seed tests run."
+      },
+      {
+        "name": "kb_ingest_idempotent",
+        "cmd": "uv run python scripts/ingest_kb.py && uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL']); c=e.connect(); n1=c.execute(sa.text('SELECT count(*) FROM knowledge_chunks')).scalar(); print('after first ingest', n1)\" && uv run python scripts/ingest_kb.py && uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL']); c=e.connect(); n2=c.execute(sa.text('SELECT count(*) FROM knowledge_chunks')).scalar(); assert n2>0, 'no chunks ingested'; print('after second ingest', n2)\"",
+        "gate": "First ingest creates >0 KnowledgeChunk rows; a SECOND ingest over unchanged kb/*.md leaves the count unchanged (duplicate-ingest is a no-op; idempotent on content_hash). F033, F036."
+      },
+      {
+        "name": "kb_chunks_are_384_and_attributed",
+        "cmd": "uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL']); c=e.connect(); r=c.execute(sa.text(\\\"SELECT count(*) FROM knowledge_chunks WHERE source_file IS NULL OR category NOT IN ('ats','resume','profile','interview','career') OR content_hash IS NULL\\\")).scalar(); assert r==0, ('bad attribution rows: '+str(r)); dim=c.execute(sa.text('SELECT vector_dims(embedding) FROM knowledge_chunks LIMIT 1')).scalar(); assert dim==384, ('chunk embedding dim != 384: '+str(dim)); print('chunks 384-dim + fully attributed')\"",
+        "gate": "Every KnowledgeChunk has a non-null source_file, an in-set category, a content_hash, and a 384-dim embedding. F034, F033 (source attribution)."
+      },
+      {
+        "name": "kb_topk_vector_query",
+        "cmd": "uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL']); c=e.connect(); q=c.execute(sa.text('SELECT embedding FROM knowledge_chunks LIMIT 1')).scalar(); rows=c.execute(sa.text('SELECT source_file, category, chunk_index FROM knowledge_chunks ORDER BY embedding <=> :q LIMIT 5'), {'q': q}).fetchall(); assert len(rows)==5, ('expected 5 got '+str(len(rows))); print('top-5 KB cosine over real rows ok', rows)\"",
+        "gate": "A REAL cosine top-k (<=>) similarity query over ingested knowledge_chunks returns 5 ordered rows each carrying source attribution. Proves the HNSW/vector path works on live data. F035."
+      },
+      {
+        "name": "jobs_seed_idempotent_and_count",
+        "cmd": "uv run python scripts/seed_jobs.py && uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL']); c=e.connect(); n1=c.execute(sa.text('SELECT count(*) FROM jobs')).scalar(); assert 500<=n1<=1000, ('job count out of [500,1000]: '+str(n1)); print('after first seed', n1)\" && uv run python scripts/seed_jobs.py && uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL']); c=e.connect(); n2=c.execute(sa.text('SELECT count(*) FROM jobs')).scalar(); print('after second seed', n2); assert 500<=n2<=1000, n2\"",
+        "gate": "First seed loads 500-1000 jobs; a SECOND seed over the same fixture leaves the count unchanged (re-seed does not duplicate; idempotent on external_ref). F037, F040."
+      },
+      {
+        "name": "jobs_required_fields_and_384",
+        "cmd": "uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL']); c=e.connect(); bad=c.execute(sa.text(\\\"SELECT count(*) FROM jobs WHERE title IS NULL OR company IS NULL OR description IS NULL OR location IS NULL OR skills IS NULL OR source NOT IN ('seed','api')\\\")).scalar(); assert bad==0, ('jobs missing required fields: '+str(bad)); dim=c.execute(sa.text('SELECT vector_dims(embedding) FROM jobs LIMIT 1')).scalar(); assert dim==384, ('job embedding dim != 384: '+str(dim)); print('jobs fully populated + 384-dim')\"",
+        "gate": "Every seeded job has title/company/description/location/skills populated, source in {seed,api}, and a 384-dim description embedding. F037, F038."
+      },
+      {
+        "name": "jobs_top10_vector_query",
+        "cmd": "uv run python -c \"import os,sqlalchemy as sa; e=sa.create_engine(os.environ['DATABASE_URL']); c=e.connect(); q=c.execute(sa.text('SELECT embedding FROM jobs LIMIT 1')).scalar(); rows=c.execute(sa.text('SELECT id, title FROM jobs ORDER BY embedding <=> :q LIMIT 10'), {'q': q}).fetchall(); assert len(rows)==10, ('expected 10 got '+str(len(rows))); print('top-10 job cosine over real rows ok', [r[1] for r in rows][:3])\"",
+        "gate": "A REAL cosine top-10 (<=>) similarity query over seeded jobs returns exactly 10 ordered rows. Proves retrieve_top_jobs(k=10)'s vector path against the live HNSW index. F039."
+      },
+      {
+        "name": "resume_storage_non_web_served",
+        "cmd": "uv run python -c \"import os,sys,pathlib; sd=pathlib.Path(os.environ.get('STORAGE_DIR','./.local_resume_store')).resolve(); served=[pathlib.Path('src/app/api/static').resolve(), pathlib.Path('public').resolve(), pathlib.Path('static').resolve()]; bad=any(str(sd).startswith(str(p)) for p in served); print('STORAGE_DIR', sd); print('WEB_SERVED' if bad else 'OK'); sys.exit(1 if bad else 0)\"",
+        "gate": "STORAGE_DIR resolves to a path that is NOT under any static/public web-served directory (resume bytes are non-web-served). F031, AC-BEHAV-B12. (The path-traversal-rejection and storage_key-opacity assertions run in the pytest integration suite.)"
+      }
+    ]
+  },
+
+  "coverage_target": 99,
+
+  "acceptance_mapping": {
+    "F020": { "story": "E2-S1", "acceptance_criterion": "AC1 — create_user persists a User with a generated id and rejects duplicate email with a typed unique error. Verified by AC-BEHAV-B01." },
+    "F021": { "story": "E2-S1", "acceptance_criterion": "AC2 — get_user_by_email is case-insensitive and returns None for unknown emails. Verified by AC-BEHAV-B02." },
+    "F022": { "story": "E2-S1", "acceptance_criterion": "AC3 + AC5 — store/revoke refresh tokens (sha256 token_hash, expiry); revoked token cannot be reused; injected session, no commit/rollback/session-factory in repo. Verified by AC-SCHEMA-B05, AC-BEHAV-B03, AC-IMPORT-B05, AC-IMPORT-B06." },
+    "F023": { "story": "E2-S1", "acceptance_criterion": "AC4 — is_refresh_token_valid True only for active, False for revoked/expired. Verified by AC-BEHAV-B04." },
+    "F024": { "story": "E3-S1", "acceptance_criterion": "AC1 — exactly one Profile per user, retrievable by user_id, no duplicate on repeated access. Verified by AC-BEHAV-B05." },
+    "F025": { "story": "E3-S1", "acceptance_criterion": "AC2 — update_profile atomically persists all 7 sections. Verified by AC-BEHAV-B06." },
+    "F026": { "story": "E3-S1", "acceptance_criterion": "AC3 + AC4 — deterministic completion_percentage int 0-100; full=100, empty=0. Verified by AC-SCHEMA-B04, AC-BEHAV-B07." },
+    "F027": { "story": "E3-S1", "acceptance_criterion": "AC5 — updating one user's profile never mutates another's. Verified by AC-BEHAV-B08." },
+    "F028": { "story": "E4-S1", "acceptance_criterion": "AC1 — StorageBackend protocol abstracts persistence; local backend swappable; callers depend on the interface. Verified by AC-IMPORT-B02, AC-BEHAV-B09." },
+    "F029": { "story": "E4-S1", "acceptance_criterion": "AC2 — save_resume stores bytes + metadata (user_id, filename, MIME, size, sha256 hash, storage_key) returning an id; validates type/size and rejects bad uploads storing nothing. Verified by AC-SCHEMA-B01, AC-BEHAV-B10, AC-BEHAV-B20." },
+    "F030": { "story": "E4-S1", "acceptance_criterion": "AC3 — delete_resume removes file + metadata and cascades to ResumeReview. Verified by AC-BEHAV-B11." },
+    "F031": { "story": "E4-S1", "acceptance_criterion": "AC4 — stored files are not on any web-served/public path; storage_key opaque. Verified by AC-BEHAV-B12, resume_storage_non_web_served." },
+    "F032": { "story": "E4-S1", "acceptance_criterion": "AC5 — get-by-hash returns the existing record (cache hit). Verified by AC-BEHAV-B13." },
+    "F033": { "story": "E5-S2", "acceptance_criterion": "AC1 + AC5 — ingest curated markdown into bounded, source-attributed KnowledgeChunk rows retaining source reference. Verified by AC-BEHAV-B14, kb_chunks_are_384_and_attributed." },
+    "F034": { "story": "E5-S2", "acceptance_criterion": "AC2 — each chunk stores a 384-dim embedding. Verified by AC-SCHEMA-B02, kb_chunks_are_384_and_attributed." },
+    "F035": { "story": "E5-S2", "acceptance_criterion": "AC3 + AC5 — pgvector top-k returns nearest chunks ordered by similarity, retaining source; repo never embeds/LLM-calls. Verified by AC-BEHAV-B16, AC-IMPORT-B04, kb_topk_vector_query." },
+    "F036": { "story": "E5-S2", "acceptance_criterion": "AC4 — re-running ingestion is idempotent (content_hash), no duplicate chunks. Verified by AC-BEHAV-B15, kb_ingest_idempotent." },
+    "F037": { "story": "E7-S1", "acceptance_criterion": "AC1 — seed 500-1000 realistic jobs with required fields behind a JobLoader. Verified by AC-SCHEMA-B03, AC-BEHAV-B17, jobs_seed_idempotent_and_count, jobs_required_fields_and_384." },
+    "F038": { "story": "E7-S1", "acceptance_criterion": "AC2 — each job stores a 384-dim description embedding. Verified by AC-SCHEMA-B03, jobs_required_fields_and_384." },
+    "F039": { "story": "E7-S1", "acceptance_criterion": "AC3 + AC4 — retrieve_top_jobs(k=10) ordered by similarity; get_job_by_id returns record or None; repo never embeds/LLM-calls. Verified by AC-BEHAV-B19, AC-IMPORT-B04, jobs_top10_vector_query." },
+    "F040": { "story": "E7-S1", "acceptance_criterion": "AC5 — job source abstracted behind a loader interface (idempotent re-seed) so a real API can replace the seed without changing retrieval. Verified by AC-IMPORT-B03, AC-BEHAV-B18, jobs_seed_idempotent_and_count." }
+  }
+}

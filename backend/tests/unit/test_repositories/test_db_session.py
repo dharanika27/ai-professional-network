@@ -103,3 +103,32 @@ class TestInitDB:
             assert result[0] == 1
         finally:
             session.close()
+
+    def test_get_session_factory_before_init_raises(self) -> None:
+        """Before init_db is called, get_session_factory must raise RuntimeError.
+
+        Covers session.py line 72 — the _session_factory is None guard.
+        """
+        from app.db import session as sess_module
+
+        original = sess_module._session_factory
+        sess_module._session_factory = None
+        try:
+            with pytest.raises(RuntimeError, match="not initialized"):
+                get_session_factory()
+        finally:
+            sess_module._session_factory = original
+
+    def test_get_session_rolls_back_on_exception(self) -> None:
+        """get_session must rollback and re-raise when the consumer raises.
+
+        Covers session.py lines 87-89 — the exception rollback path.
+        """
+        init_db(TEST_DATABASE_URL)
+        gen = get_session()
+        session = next(gen)
+        assert isinstance(session, Session)
+
+        # Throw an exception back into the generator
+        with pytest.raises(ValueError, match="test rollback"):
+            gen.throw(ValueError("test rollback"))

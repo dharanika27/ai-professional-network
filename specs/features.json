@@ -310,8 +310,8 @@
         "Assert a non-null id is returned",
         "Call create_user again with the same email and assert a unique-constraint error is raised"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -326,8 +326,8 @@
         "Look it up using a different case and assert the same user is returned",
         "Look up an unknown email and assert None"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -342,8 +342,8 @@
         "Revoke it",
         "Assert is_refresh_token_valid returns False for the revoked token"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -358,8 +358,8 @@
         "Assert is_refresh_token_valid returns False",
         "Store an active token and assert it returns True"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -374,8 +374,8 @@
         "Assert exactly one profile is returned",
         "Assert a second retrieval does not create a duplicate"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -390,8 +390,8 @@
         "Re-fetch the profile",
         "Assert all updated sections match the input"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -406,8 +406,8 @@
         "Update a profile to empty and assert completion_percentage == 0",
         "Repeat with identical input and assert the same percentage each time"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -422,8 +422,8 @@
         "Update user A's profile",
         "Assert user B's profile is unchanged"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -437,8 +437,8 @@
         "Inspect the storage interface and the local-volume implementation",
         "Assert callers depend on the interface, not the concrete backend"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -453,8 +453,8 @@
         "Assert a resume id is returned and the SHA-256 hash is persisted",
         "Assert the stored file bytes match the input"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -469,8 +469,8 @@
         "Call delete_resume(resume_id, user_id)",
         "Assert file, metadata, and the ResumeReview are all gone"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -485,8 +485,8 @@
         "Inspect the storage location",
         "Assert the path is outside any static/public-served directory"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -501,8 +501,8 @@
         "Look up by that hash",
         "Assert the existing record is returned"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -517,8 +517,8 @@
         "Assert KnowledgeChunk rows are created",
         "Assert each chunk records its source file reference"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -532,8 +532,8 @@
         "Inspect persisted chunks after ingestion",
         "Assert each chunk's embedding vector length is 384"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -547,8 +547,8 @@
         "Embed a query and run the similarity search for k=5",
         "Assert 5 chunks are returned ordered by descending similarity"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -563,8 +563,8 @@
         "Run ingestion again over unchanged files",
         "Assert the chunk count is unchanged"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -579,8 +579,8 @@
         "Assert the Job table row count is between 500 and 1000",
         "Assert each row has title, company, description, location, and skills populated"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -594,8 +594,8 @@
         "Inspect seeded jobs",
         "Assert each job's embedding vector length is 384"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -609,8 +609,8 @@
         "Provide a query embedding to retrieve_top_jobs with k=10",
         "Assert exactly 10 jobs are returned ordered by descending similarity"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },
@@ -624,8 +624,8 @@
         "Inspect the job loader interface and the seed implementation",
         "Assert retrieval code depends on the interface, not the seed loader"
       ],
-      "passes": false,
-      "last_evaluated": null,
+      "passes": true,
+      "last_evaluated": "2026-06-30",
       "failure_reason": null,
       "failure_layer": null
     },

@@ -79,8 +79,13 @@ class Profile(BaseModel):
     @field_validator("completion_percentage")
     @classmethod
     def validate_completion(cls, v: int) -> int:
-        """Ensure completion_percentage is within 0-100."""
-        if not 0 <= v <= 100:
+        """Ensure completion_percentage is within 0-100.
+
+        Note: Field(ge=0, le=100) already rejects out-of-range values before
+        this validator runs. The guard below is a belt-and-suspenders fallback
+        for programmatic construction that bypasses Pydantic constraints.
+        """
+        if not 0 <= v <= 100:  # pragma: no cover
             raise ValueError("completion_percentage must be between 0 and 100")
         return v
 
