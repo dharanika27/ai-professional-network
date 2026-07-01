@@ -57,8 +57,8 @@ class BGEEmbeddingProvider:
         with self._lock:
             if self._model is None:
                 # Import deferred so callers that never embed don't pay startup cost
-                from sentence_transformers import (  # type: ignore[import-untyped]
-                    SentenceTransformer,
+                from sentence_transformers import (
+                    SentenceTransformer,  # type: ignore[import-untyped,unused-ignore]
                 )
 
                 logger.info(

@@ -47,6 +47,23 @@
 - **Learned Rules Applied:** none
 - **Gate fixes:** ruff --fix/format on migrations/ (5 lint + 2 format) auto-corrected before commit
 
+## Group C — Service Layer (LLM client, Auth, Profile, Resume parsing, RAG retrieval)
+- **Date:** 2026-07-01
+- **Status:** IN PROGRESS (attempt 1 of 3)
+- **Stories:** [E6-S1, E4-S2, E5-S3, E2-S2, E3-S2]
+- **Mode:** full (5 parallel teammates, phased)
+- **Summary:** Implementing service layer — LLM client (Groq-backed, provider-agnostic), resume parsing (pypdf/python-docx + LLM structuring), RAG retrieval (embedding + pgvector), auth service (Argon2/JWT), profile service (validation/completion/normalization).
+
+### Micro-DAG
+- Phase 1 (Independent, parallel): [teammate-E6S1, teammate-E2S2, teammate-E3S2]
+  - teammate-E6S1: services/ai/llm_provider.py, services/ai/groq_provider.py, services/ai/llm_client.py, repositories/ai_log_repository.py — produces: LLMClient interface contract
+  - teammate-E2S2: services/security.py, services/auth_service.py — no upstream deps within Group C
+  - teammate-E3S2: services/profile_service.py — no upstream deps within Group C
+- Phase 2 (Consumes Phase 1, parallel): [teammate-E4S2, teammate-E5S3]
+  - teammate-E4S2: services/parsing/extractor.py, services/parsing/structurer.py, services/resume_service.py, services/ai/prompts/* — consumes: LLMClient (E6-S1)
+  - teammate-E5S3: services/ai/rag_retrieval.py — consumes: EmbeddingProvider (Group B), KnowledgeRepository (Group B). NO LLM call inside.
+- Phase 3 (Integration): Generator adds groq/pypdf/python-docx to pyproject.toml, RAG_TOP_K/RAG_MIN_SIMILARITY to Settings, runs tests + coverage gate
+
 ## Group B — Repository & Data-Seeding Substrate
 - **Date:** 2026-06-30
 - **Status:** PASS (attempt 1 of 3) — RESUMED after interruption; implementation was on disk uncommitted, verified & completed by orchestrator

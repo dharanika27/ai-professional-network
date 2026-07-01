@@ -38,6 +38,13 @@ with Groq as the concrete implementation. All Anthropic-specific configuration i
    deterministic ops, and per-user rate limiting all stay exactly as in `ai-service-architecture.md`
    — they live in the provider-agnostic `llm_client.py`, above the provider.
 
+   **HARD REQUIREMENT (user-mandated):** Every AI feature MUST return **structured JSON
+   validated against a Pydantic model** — `StructuredResume`, `ResumeReviewContent`,
+   `ProfileOptimizationContent`, and the job re-rank result (`data-models.md` §3). Request
+   JSON-constrained output from Groq, then `Model.model_validate(...)`. **Never parse free-form
+   / natural-language LLM text to extract fields.** On validation failure → the single bounded
+   retry → safe error; unvalidated text is never returned to callers.
+
 4. **Docs to reconcile when E6 is built.** Treat every "Claude/Anthropic/`claude_client.py`/
    `ANTHROPIC_API_KEY`" reference in `ai-service-architecture.md`, `system-design.md`,
    `deployment.md`, and `design-rationale.md` as "the configured `LLMProvider` (Groq for MVP)".

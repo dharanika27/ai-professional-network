@@ -3,7 +3,8 @@
 Loads all configuration from environment variables via pydantic-settings.
 Fails fast at startup when required secrets DATABASE_URL or JWT_SECRET are absent.
 
-Amendment 001: ANTHROPIC_API_KEY is NOT required. GROQ_API_KEY is optional in Group A.
+Amendment 001: No third-party LLM API key is required for Groups A-B.
+GROQ_API_KEY is optional here; required from Epic E6.
 Only DATABASE_URL and JWT_SECRET are required fail-fast fields.
 """
 
@@ -128,6 +129,18 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     env: str = Field(default="development", description="Runtime environment.")
     log_level: str = Field(default="INFO", description="Log verbosity.")
+
+    # ------------------------------------------------------------------
+    # RAG retrieval (Group C, E5-S3)
+    # ------------------------------------------------------------------
+    rag_top_k: int = Field(
+        default=5,
+        description="Default number of knowledge chunks to retrieve (RAG_TOP_K).",
+    )
+    rag_min_similarity: float = Field(
+        default=0.0,
+        description="Minimum cosine similarity score for RAG retrieval (RAG_MIN_SIMILARITY).",
+    )
 
     # ------------------------------------------------------------------
     # Argon2 hashing params

@@ -23,6 +23,11 @@ dependencies = [
     "argon2-cffi>=23.1.0",
     # HTTP
     "httpx>=0.27.0",
+    # LLM provider (Group C)
+    "groq>=0.9.0",
+    # Resume parsing (Group C)
+    "pypdf>=4.0.0",
+    "python-docx>=1.1.0",
 ]
 
 [project.optional-dependencies]
@@ -47,6 +52,9 @@ pythonpath = ["src", "."]
 addopts = [
     "-v",
     "--tb=short",
+]
+markers = [
+    "groq_integration: marks tests that make real Groq API calls (requires GROQ_API_KEY)",
 ]
 env = [
     "DATABASE_URL=postgresql://app:app@localhost:5433/ai_professional_network",

@@ -5,6 +5,8 @@ operating on an injected SQLAlchemy Session. No business logic, no HTTP,
 no commit/rollback/close calls. Transaction boundaries are owned by the caller.
 """
 
+from app.repositories import ai_log_repository
+from app.repositories.ai_log_repository import log_request
 from app.repositories.job_repository import (
     get_job_by_id,
     get_job_count,
@@ -39,6 +41,9 @@ from app.repositories.user_repository import (
 )
 
 __all__ = [
+    # ai_log_repository
+    "ai_log_repository",
+    "log_request",
     # user_repository
     "DuplicateEmailError",
     "create_user",
